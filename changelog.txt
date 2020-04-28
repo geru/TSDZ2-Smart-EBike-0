@@ -1,4 +1,4 @@
-List of changes mn.20beta1.B
+List of changes mb.20beta1.B
  1 - added cadence sensor calibration in advanced mode.
  2 - added calibration of maximum torque value (torque sensor range).
  3 - added ADC conversion factor calibration of the torque sensor (with weight).
