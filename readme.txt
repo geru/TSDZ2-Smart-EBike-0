@@ -6,7 +6,7 @@
  * Author: mbrusa
  * Version mb.20beta1.A
  * Version mb.20beta1.B
- * Completed parameter configurator by Stancecoke.
+ * Completed Java Parameter Configurator.
 
  Warning
  Before compiling, flashing and using the firmaware:

@@ -1214,9 +1214,9 @@
 		// calculate the delta value of adc pedal torque
 		if (ui16_adc_pedal_torque > ui16_adc_pedal_torque_offset_temp)
 		{
-			if((m_configuration_variables.ui8_pedal_torque_10_bit_ADC_range < ADC_TORQUE_RANGE_MIN_ADJUSTED)&&(m_configuration_variables.ui8_riding_mode != TORQUE_SENSOR_CALIBRATION_MODE))
+			if((m_configuration_variables.ui8_pedal_torque_10_bit_ADC_range < ADC_TORQUE_RANGE_MIN)&&(m_configuration_variables.ui8_riding_mode != TORQUE_SENSOR_CALIBRATION_MODE))
 				// adc pedal torque delta remapping
-				ui16_adc_pedal_torque_delta = (ui16_adc_pedal_torque - ui16_adc_pedal_torque_offset_temp) * ADC_TORQUE_RANGE_MIN_ADJUSTED / m_configuration_variables.ui8_pedal_torque_10_bit_ADC_range;							
+				ui16_adc_pedal_torque_delta = (ui16_adc_pedal_torque - ui16_adc_pedal_torque_offset_temp) * ADC_TORQUE_RANGE_MIN / m_configuration_variables.ui8_pedal_torque_10_bit_ADC_range;							
 			else
 				ui16_adc_pedal_torque_delta = (ui16_adc_pedal_torque - ui16_adc_pedal_torque_offset_temp);
 		}

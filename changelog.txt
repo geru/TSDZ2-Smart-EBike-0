@@ -17,3 +17,5 @@ List of changes mb.20beta1.B
 16 - fixed data saving problem in eeprom.
 17 - fixed display battery residual percentage problem at startup.
 18 - fixed problem displaying error E06 "over temperature".
+19 - Stancecoke Java Parameter Configurator completed.
+20 - Updated parameter guide and user manuals.
