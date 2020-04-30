@@ -17,6 +17,8 @@
     </Component>
     <Component class="javax.swing.ButtonGroup" name="buttonGroup5">
     </Component>
+    <Component class="javax.swing.ButtonGroup" name="buttonGroup6">
+    </Component>
   </NonVisualComponents>
   <Properties>
     <Property name="defaultCloseOperation" type="int" value="3"/>
@@ -119,10 +121,13 @@
                           <Component id="jPanel6" alignment="0" max="32767" attributes="0"/>
                           <Component id="jPanel7" alignment="1" min="-2" max="-2" attributes="0"/>
                       </Group>
-                      <EmptySpace pref="40" max="32767" attributes="0"/>
+                      <EmptySpace max="32767" attributes="0"/>
                       <Group type="103" groupAlignment="0" max="-2" attributes="0">
                           <Component id="jPanel3" max="32767" attributes="0"/>
-                          <Component id="jPanel5" max="32767" attributes="0"/>
+                          <Group type="102" attributes="0">
+                              <EmptySpace min="-2" pref="5" max="-2" attributes="0"/>
+                              <Component id="jPanel5" max="32767" attributes="0"/>
+                          </Group>
                       </Group>
                       <EmptySpace min="-2" pref="40" max="-2" attributes="0"/>
                       <Component id="jPanel2" min="-2" max="-2" attributes="0"/>
@@ -147,7 +152,7 @@
                               <Component id="jPanel7" min="-2" max="-2" attributes="0"/>
                           </Group>
                       </Group>
-                      <EmptySpace pref="15" max="32767" attributes="0"/>
+                      <EmptySpace max="32767" attributes="0"/>
                   </Group>
               </Group>
             </DimensionLayout>
@@ -440,7 +445,7 @@
                               <Component id="jLabel24" alignment="0" max="32767" attributes="0"/>
                               <Component id="jLabel21" alignment="0" max="32767" attributes="0"/>
                               <Component id="jLabel10" alignment="0" max="32767" attributes="0"/>
-                              <Component id="jLabel25" alignment="0" pref="159" max="32767" attributes="0"/>
+                              <Component id="jLabel25" alignment="0" max="32767" attributes="0"/>
                               <Component id="jLabel23" max="32767" attributes="0"/>
                               <Group type="102" attributes="0">
                                   <Component id="jLabel18" min="-2" max="-2" attributes="0"/>
@@ -474,7 +479,7 @@
                       <Group type="102" alignment="0" attributes="0">
                           <EmptySpace min="0" pref="0" max="-2" attributes="0"/>
                           <Component id="jLabel18" min="-2" pref="24" max="-2" attributes="0"/>
-                          <EmptySpace type="unrelated" max="-2" attributes="0"/>
+                          <EmptySpace min="0" pref="0" max="-2" attributes="0"/>
                           <Group type="103" groupAlignment="3" attributes="0">
                               <Component id="TF_BAT_CUR_MAX" alignment="3" min="-2" max="-2" attributes="0"/>
                               <Component id="jLabel9" alignment="3" max="-2" attributes="0"/>
@@ -656,17 +661,27 @@
               <Layout>
                 <DimensionLayout dim="0">
                   <Group type="103" groupAlignment="0" attributes="0">
-                      <Group type="102" attributes="0">
-                          <EmptySpace max="-2" attributes="0"/>
+                      <Group type="102" alignment="0" attributes="0">
+                          <EmptySpace min="0" pref="0" max="-2" attributes="0"/>
                           <Group type="103" groupAlignment="0" attributes="0">
-                              <Group type="103" groupAlignment="0" max="-2" attributes="0">
-                                  <Component id="Label_Parameter2" max="32767" attributes="0"/>
-                                  <Component id="jLabel16" pref="145" max="32767" attributes="0"/>
+                              <Group type="102" alignment="0" attributes="0">
+                                  <Group type="103" groupAlignment="0" attributes="0">
+                                      <Group type="103" groupAlignment="0" max="-2" attributes="0">
+                                          <Component id="Label_Parameter2" max="32767" attributes="0"/>
+                                          <Component id="jLabel16" pref="150" max="32767" attributes="0"/>
+                                      </Group>
+                                      <Component id="Label_Parameter3" alignment="0" min="-2" pref="145" max="-2" attributes="0"/>
+                                      <Component id="Label_Parameter4" alignment="0" min="-2" pref="145" max="-2" attributes="0"/>
+                                  </Group>
+                                  <EmptySpace min="0" pref="0" max="32767" attributes="0"/>
                               </Group>
-                              <Component id="Label_Parameter3" alignment="0" min="-2" pref="145" max="-2" attributes="0"/>
-                              <Component id="Label_Parameter4" alignment="0" min="-2" pref="145" max="-2" attributes="0"/>
+                              <Group type="102" alignment="0" attributes="0">
+                                  <Component id="Label_Parameter5" min="-2" pref="63" max="-2" attributes="0"/>
+                                  <EmptySpace min="-2" pref="21" max="-2" attributes="0"/>
+                                  <Component id="RB_UNIT_KILOMETERS" max="-2" attributes="0"/>
+                              </Group>
                           </Group>
-                          <EmptySpace max="32767" attributes="0"/>
+                          <EmptySpace max="-2" attributes="0"/>
                           <Group type="103" groupAlignment="0" attributes="0">
                               <Group type="103" groupAlignment="0" attributes="0">
                                   <Group type="103" groupAlignment="0" attributes="0">
@@ -675,8 +690,14 @@
                                   </Group>
                                   <Component id="RB_VLCD6" alignment="1" min="-2" max="-2" attributes="0"/>
                               </Group>
-                              <Component id="RB_DISPLAY_WORK_ON" max="32767" attributes="0"/>
-                              <Component id="RB_DISPLAY_ALWAY_ON" alignment="0" max="32767" attributes="0"/>
+                              <Component id="RB_DISPLAY_WORK_ON" max="-2" attributes="0"/>
+                              <Group type="102" attributes="0">
+                                  <Group type="103" groupAlignment="0" attributes="0">
+                                      <Component id="RB_UNIT_MILES" max="-2" attributes="0"/>
+                                      <Component id="RB_DISPLAY_ALWAY_ON" alignment="0" max="-2" attributes="0"/>
+                                  </Group>
+                                  <EmptySpace min="35" pref="35" max="-2" attributes="0"/>
+                              </Group>
                           </Group>
                           <EmptySpace max="-2" attributes="0"/>
                       </Group>
@@ -685,7 +706,7 @@
                 <DimensionLayout dim="1">
                   <Group type="103" groupAlignment="0" attributes="0">
                       <Group type="102" alignment="1" attributes="0">
-                          <EmptySpace max="32767" attributes="0"/>
+                          <EmptySpace min="0" pref="6" max="32767" attributes="0"/>
                           <Group type="103" groupAlignment="0" attributes="0">
                               <Component id="jLabel16" max="-2" attributes="0"/>
                               <Component id="RB_VLCD5" max="-2" attributes="0"/>
@@ -702,17 +723,19 @@
                               <Component id="Label_Parameter3" min="-2" max="-2" attributes="0"/>
                               <Component id="RB_DISPLAY_WORK_ON" min="-2" max="-2" attributes="0"/>
                           </Group>
-                          <Group type="103" groupAlignment="0" attributes="0">
-                              <Group type="102" alignment="0" attributes="0">
-                                  <EmptySpace max="-2" attributes="0"/>
-                                  <Component id="RB_DISPLAY_ALWAY_ON" min="-2" max="-2" attributes="0"/>
-                              </Group>
-                              <Group type="102" alignment="1" attributes="0">
-                                  <EmptySpace min="-2" pref="4" max="-2" attributes="0"/>
-                                  <Component id="Label_Parameter4" min="-2" pref="20" max="-2" attributes="0"/>
-                              </Group>
+                          <EmptySpace max="-2" attributes="0"/>
+                          <Group type="103" groupAlignment="1" attributes="0">
+                              <Component id="RB_DISPLAY_ALWAY_ON" min="-2" max="-2" attributes="0"/>
+                              <Component id="Label_Parameter4" min="-2" pref="20" max="-2" attributes="0"/>
                           </Group>
                           <EmptySpace max="-2" attributes="0"/>
+                          <Group type="103" groupAlignment="0" attributes="0">
+                              <Group type="103" groupAlignment="3" attributes="0">
+                                  <Component id="Label_Parameter5" alignment="3" min="-2" pref="20" max="-2" attributes="0"/>
+                                  <Component id="RB_UNIT_KILOMETERS" alignment="3" min="-2" max="-2" attributes="0"/>
+                              </Group>
+                              <Component id="RB_UNIT_MILES" alignment="0" min="-2" max="-2" attributes="0"/>
+                          </Group>
                       </Group>
                   </Group>
                 </DimensionLayout>
@@ -795,6 +818,29 @@
                     <Property name="buttonGroup" type="javax.swing.ButtonGroup" editor="org.netbeans.modules.form.RADComponent$ButtonGroupPropertyEditor">
                       <ComponentRef name="buttonGroup4"/>
                     </Property>
+                  </Properties>
+                </Component>
+                <Component class="javax.swing.JLabel" name="Label_Parameter5">
+                  <Properties>
+                    <Property name="text" type="java.lang.String" value="Units type"/>
+                  </Properties>
+                </Component>
+                <Component class="javax.swing.JRadioButton" name="RB_UNIT_MILES">
+                  <Properties>
+                    <Property name="buttonGroup" type="javax.swing.ButtonGroup" editor="org.netbeans.modules.form.RADComponent$ButtonGroupPropertyEditor">
+                      <ComponentRef name="buttonGroup6"/>
+                    </Property>
+                    <Property name="text" type="java.lang.String" value="mph"/>
+                    <Property name="toolTipText" type="java.lang.String" value="&lt;html&gt;Also set on the display&lt;br&gt;&#xa;If you set miles in display&lt;br&gt;&#xa;set max wheel available&#xa;&lt;/html&gt;"/>
+                  </Properties>
+                </Component>
+                <Component class="javax.swing.JRadioButton" name="RB_UNIT_KILOMETERS">
+                  <Properties>
+                    <Property name="buttonGroup" type="javax.swing.ButtonGroup" editor="org.netbeans.modules.form.RADComponent$ButtonGroupPropertyEditor">
+                      <ComponentRef name="buttonGroup6"/>
+                    </Property>
+                    <Property name="text" type="java.lang.String" value="kph"/>
+                    <Property name="toolTipText" type="java.lang.String" value="&lt;html&gt;Also set on the display&lt;br&gt;&#xa;If you set miles in display&lt;br&gt;&#xa;set max wheel available&#xa;&lt;/html&gt;"/>
                   </Properties>
                 </Component>
               </SubComponents>
@@ -929,13 +975,13 @@
                       <Group type="102" alignment="0" attributes="0">
                           <EmptySpace min="0" pref="0" max="-2" attributes="0"/>
                           <Component id="jLabel39" min="-2" pref="24" max="-2" attributes="0"/>
-                          <EmptySpace type="separate" max="-2" attributes="0"/>
+                          <EmptySpace type="unrelated" max="-2" attributes="0"/>
                           <Component id="CB_LIGHTS" min="-2" max="-2" attributes="0"/>
                           <EmptySpace type="unrelated" max="-2" attributes="0"/>
                           <Component id="CB_WALK_ASSIST" min="-2" max="-2" attributes="0"/>
                           <EmptySpace type="unrelated" max="-2" attributes="0"/>
                           <Component id="CB_BRAKE_SENSOR" min="-2" max="-2" attributes="0"/>
-                          <EmptySpace min="-2" pref="16" max="-2" attributes="0"/>
+                          <EmptySpace min="-2" pref="20" max="-2" attributes="0"/>
                           <Group type="103" groupAlignment="0" attributes="0">
                               <Component id="RB_ADC_OPTION_DIS" alignment="0" max="-2" attributes="0"/>
                               <Component id="jLabel30" alignment="0" min="-2" max="-2" attributes="0"/>
@@ -950,7 +996,7 @@
                               <Component id="jLabel33" min="-2" max="-2" attributes="0"/>
                               <Component id="RB_TEMP_LIMIT" min="-2" max="-2" attributes="0"/>
                           </Group>
-                          <EmptySpace type="separate" max="-2" attributes="0"/>
+                          <EmptySpace min="-2" pref="20" max="-2" attributes="0"/>
                           <Component id="CB_STREET_MODE_ON_START" min="-2" max="-2" attributes="0"/>
                           <EmptySpace type="unrelated" max="-2" attributes="0"/>
                           <Component id="CB_CAD_SENSOR_ADV" min="-2" max="-2" attributes="0"/>

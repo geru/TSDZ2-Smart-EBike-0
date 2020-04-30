@@ -217,6 +217,8 @@
 #define ENABLE_DISPLAY_WORKING_FLAG                 1
 #define ENABLE_DISPLAY_ALWAYS_ON                    0
 #define ENABLE_WHEEL_MAX_SPEED_FROM_DISPLAY         1
+#define UNITS_TYPE                                  0
+// 0 = km/h and kilometer, 1 mph and miles
 
 // delay menu function (0.1 sec, 40 to 60)
 #define DELAY_MENU_ON                               50

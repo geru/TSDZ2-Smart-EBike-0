@@ -189,6 +189,8 @@ public class TSDZ2_Configurator extends javax.swing.JFrame {
                 TF_CRUISE_SPEED_ENA.setText(in.readLine());
                 TF_TORQ_ADC_OFFSET_ADJ.setText(in.readLine());
                 TF_NUM_DATA_AUTO_DISPLAY.setText(in.readLine());
+                RB_UNIT_KILOMETERS.setSelected(Boolean.parseBoolean(in.readLine()));
+                RB_UNIT_MILES.setSelected(Boolean.parseBoolean(in.readLine()));
                 
 		in.close();
                 
@@ -961,7 +963,20 @@ public class TSDZ2_Configurator extends javax.swing.JFrame {
 
                                         text_to_save = "#define AUTO_DATA_NUMBER_DISPLAY " + TF_NUM_DATA_AUTO_DISPLAY.getText();
                                         iWriter.println(TF_NUM_DATA_AUTO_DISPLAY.getText());
-					pWriter.println(text_to_save);                                        
+					pWriter.println(text_to_save);
+
+                                        if (RB_UNIT_KILOMETERS.isSelected()) {
+						text_to_save = "#define UNITS_TYPE 0";
+						pWriter.println(text_to_save);
+					}   
+					iWriter.println(RB_UNIT_KILOMETERS.isSelected());
+
+                                        if (RB_UNIT_MILES.isSelected()) {
+						text_to_save = "#define UNITS_TYPE 1";
+						pWriter.println(text_to_save);
+					}
+					iWriter.println(RB_UNIT_MILES.isSelected());
+                                        
                                         pWriter.println("\r\n#endif /* CONFIG_H_ */");
 
 					iWriter.close();
@@ -1013,6 +1028,7 @@ public class TSDZ2_Configurator extends javax.swing.JFrame {
         jRadioButton1 = new javax.swing.JRadioButton();
         buttonGroup4 = new javax.swing.ButtonGroup();
         buttonGroup5 = new javax.swing.ButtonGroup();
+        buttonGroup6 = new javax.swing.ButtonGroup();
         jTabbedPane1 = new javax.swing.JTabbedPane();
         jPanel1 = new javax.swing.JPanel();
         jPanel6 = new javax.swing.JPanel();
@@ -1064,6 +1080,9 @@ public class TSDZ2_Configurator extends javax.swing.JFrame {
         Label_Parameter2 = new javax.swing.JLabel();
         RB_DISPLAY_WORK_ON = new javax.swing.JRadioButton();
         RB_DISPLAY_ALWAY_ON = new javax.swing.JRadioButton();
+        Label_Parameter5 = new javax.swing.JLabel();
+        RB_UNIT_MILES = new javax.swing.JRadioButton();
+        RB_UNIT_KILOMETERS = new javax.swing.JRadioButton();
         jPanel7 = new javax.swing.JPanel();
         jLabel15 = new javax.swing.JLabel();
         jLabel14 = new javax.swing.JLabel();
@@ -1500,7 +1519,7 @@ public class TSDZ2_Configurator extends javax.swing.JFrame {
                     .addComponent(jLabel24, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                     .addComponent(jLabel21, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                     .addComponent(jLabel10, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                    .addComponent(jLabel25, javax.swing.GroupLayout.DEFAULT_SIZE, 159, Short.MAX_VALUE)
+                    .addComponent(jLabel25, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                     .addComponent(jLabel23, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                     .addGroup(jPanel3Layout.createSequentialGroup()
                         .addComponent(jLabel18)
@@ -1526,7 +1545,7 @@ public class TSDZ2_Configurator extends javax.swing.JFrame {
             .addGroup(jPanel3Layout.createSequentialGroup()
                 .addGap(0, 0, 0)
                 .addComponent(jLabel18, javax.swing.GroupLayout.PREFERRED_SIZE, 24, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                .addGap(0, 0, 0)
                 .addGroup(jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(TF_BAT_CUR_MAX, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addComponent(jLabel9))
@@ -1600,33 +1619,54 @@ public class TSDZ2_Configurator extends javax.swing.JFrame {
 
         buttonGroup4.add(RB_DISPLAY_ALWAY_ON);
 
+        Label_Parameter5.setText("Units type");
+
+        buttonGroup6.add(RB_UNIT_MILES);
+        RB_UNIT_MILES.setText("mph");
+        RB_UNIT_MILES.setToolTipText("<html>Also set on the display<br>\nIf you set miles in display<br>\nset max wheel available\n</html>");
+
+        buttonGroup6.add(RB_UNIT_KILOMETERS);
+        RB_UNIT_KILOMETERS.setText("kph");
+        RB_UNIT_KILOMETERS.setToolTipText("<html>Also set on the display<br>\nIf you set miles in display<br>\nset max wheel available\n</html>");
+
         javax.swing.GroupLayout jPanel5Layout = new javax.swing.GroupLayout(jPanel5);
         jPanel5.setLayout(jPanel5Layout);
         jPanel5Layout.setHorizontalGroup(
             jPanel5Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(jPanel5Layout.createSequentialGroup()
-                .addContainerGap()
+                .addGap(0, 0, 0)
                 .addGroup(jPanel5Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addGroup(jPanel5Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
-                        .addComponent(Label_Parameter2, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                        .addComponent(jLabel16, javax.swing.GroupLayout.DEFAULT_SIZE, 145, Short.MAX_VALUE))
-                    .addComponent(Label_Parameter3, javax.swing.GroupLayout.PREFERRED_SIZE, 145, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(Label_Parameter4, javax.swing.GroupLayout.PREFERRED_SIZE, 145, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                    .addGroup(jPanel5Layout.createSequentialGroup()
+                        .addGroup(jPanel5Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                            .addGroup(jPanel5Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
+                                .addComponent(Label_Parameter2, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                                .addComponent(jLabel16, javax.swing.GroupLayout.DEFAULT_SIZE, 150, Short.MAX_VALUE))
+                            .addComponent(Label_Parameter3, javax.swing.GroupLayout.PREFERRED_SIZE, 145, javax.swing.GroupLayout.PREFERRED_SIZE)
+                            .addComponent(Label_Parameter4, javax.swing.GroupLayout.PREFERRED_SIZE, 145, javax.swing.GroupLayout.PREFERRED_SIZE))
+                        .addGap(0, 0, Short.MAX_VALUE))
+                    .addGroup(jPanel5Layout.createSequentialGroup()
+                        .addComponent(Label_Parameter5, javax.swing.GroupLayout.PREFERRED_SIZE, 63, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addGap(21, 21, 21)
+                        .addComponent(RB_UNIT_KILOMETERS)))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addGroup(jPanel5Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addGroup(jPanel5Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                         .addGroup(jPanel5Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                             .addComponent(RB_XH18)
                             .addComponent(RB_VLCD5, javax.swing.GroupLayout.Alignment.TRAILING))
                         .addComponent(RB_VLCD6, javax.swing.GroupLayout.Alignment.TRAILING))
-                    .addComponent(RB_DISPLAY_WORK_ON, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                    .addComponent(RB_DISPLAY_ALWAY_ON, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                    .addComponent(RB_DISPLAY_WORK_ON)
+                    .addGroup(jPanel5Layout.createSequentialGroup()
+                        .addGroup(jPanel5Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                            .addComponent(RB_UNIT_MILES)
+                            .addComponent(RB_DISPLAY_ALWAY_ON))
+                        .addGap(35, 35, 35)))
                 .addContainerGap())
         );
         jPanel5Layout.setVerticalGroup(
             jPanel5Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, jPanel5Layout.createSequentialGroup()
-                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                .addGap(0, 6, Short.MAX_VALUE)
                 .addGroup(jPanel5Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addComponent(jLabel16)
                     .addComponent(RB_VLCD5))
@@ -1640,14 +1680,16 @@ public class TSDZ2_Configurator extends javax.swing.JFrame {
                 .addGroup(jPanel5Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
                     .addComponent(Label_Parameter3)
                     .addComponent(RB_DISPLAY_WORK_ON))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addGroup(jPanel5Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
+                    .addComponent(RB_DISPLAY_ALWAY_ON)
+                    .addComponent(Label_Parameter4, javax.swing.GroupLayout.PREFERRED_SIZE, 20, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addGroup(jPanel5Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addGroup(jPanel5Layout.createSequentialGroup()
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(RB_DISPLAY_ALWAY_ON))
-                    .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, jPanel5Layout.createSequentialGroup()
-                        .addGap(4, 4, 4)
-                        .addComponent(Label_Parameter4, javax.swing.GroupLayout.PREFERRED_SIZE, 20, javax.swing.GroupLayout.PREFERRED_SIZE)))
-                .addContainerGap())
+                    .addGroup(jPanel5Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                        .addComponent(Label_Parameter5, javax.swing.GroupLayout.PREFERRED_SIZE, 20, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addComponent(RB_UNIT_KILOMETERS))
+                    .addComponent(RB_UNIT_MILES)))
         );
 
         jLabel15.setText("Max speed (km/h)");
@@ -1821,13 +1863,13 @@ public class TSDZ2_Configurator extends javax.swing.JFrame {
             .addGroup(jPanel2Layout.createSequentialGroup()
                 .addGap(0, 0, 0)
                 .addComponent(jLabel39, javax.swing.GroupLayout.PREFERRED_SIZE, 24, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addGap(18, 18, 18)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
                 .addComponent(CB_LIGHTS)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
                 .addComponent(CB_WALK_ASSIST)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
                 .addComponent(CB_BRAKE_SENSOR)
-                .addGap(16, 16, 16)
+                .addGap(20, 20, 20)
                 .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addComponent(RB_ADC_OPTION_DIS)
                     .addComponent(jLabel30))
@@ -1839,7 +1881,7 @@ public class TSDZ2_Configurator extends javax.swing.JFrame {
                 .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addComponent(jLabel33)
                     .addComponent(RB_TEMP_LIMIT))
-                .addGap(18, 18, 18)
+                .addGap(20, 20, 20)
                 .addComponent(CB_STREET_MODE_ON_START)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
                 .addComponent(CB_CAD_SENSOR_ADV)
@@ -1865,10 +1907,12 @@ public class TSDZ2_Configurator extends javax.swing.JFrame {
                 .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
                     .addComponent(jPanel6, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                     .addComponent(jPanel7, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 40, Short.MAX_VALUE)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                 .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
                     .addComponent(jPanel3, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                    .addComponent(jPanel5, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                    .addGroup(jPanel1Layout.createSequentialGroup()
+                        .addGap(5, 5, 5)
+                        .addComponent(jPanel5, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)))
                 .addGap(40, 40, 40)
                 .addComponent(jPanel2, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addContainerGap())
@@ -1887,7 +1931,7 @@ public class TSDZ2_Configurator extends javax.swing.JFrame {
                         .addComponent(jPanel6, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                         .addComponent(jPanel7, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)))
-                .addContainerGap(15, Short.MAX_VALUE))
+                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
 
         jTabbedPane1.addTab("Basic settings", jPanel1);
@@ -3670,6 +3714,7 @@ public class TSDZ2_Configurator extends javax.swing.JFrame {
     private javax.swing.JLabel Label_Parameter2;
     private javax.swing.JLabel Label_Parameter3;
     private javax.swing.JLabel Label_Parameter4;
+    private javax.swing.JLabel Label_Parameter5;
     private javax.swing.JRadioButton RB_ADC_OPTION_DIS;
     private javax.swing.JRadioButton RB_CADENCE_ON_START;
     private javax.swing.JRadioButton RB_DISPLAY_ALWAY_ON;
@@ -3681,6 +3726,8 @@ public class TSDZ2_Configurator extends javax.swing.JFrame {
     private javax.swing.JRadioButton RB_TEMP_LIMIT;
     private javax.swing.JRadioButton RB_THROTTLE;
     private javax.swing.JRadioButton RB_TORQUE_ON_START;
+    private javax.swing.JRadioButton RB_UNIT_KILOMETERS;
+    private javax.swing.JRadioButton RB_UNIT_MILES;
     private javax.swing.JRadioButton RB_VLCD5;
     private javax.swing.JRadioButton RB_VLCD6;
     private javax.swing.JRadioButton RB_XH18;
@@ -3773,6 +3820,7 @@ public class TSDZ2_Configurator extends javax.swing.JFrame {
     private javax.swing.ButtonGroup buttonGroup3;
     private javax.swing.ButtonGroup buttonGroup4;
     private javax.swing.ButtonGroup buttonGroup5;
+    private javax.swing.ButtonGroup buttonGroup6;
     private javax.swing.JList<String> expSet;
     private javax.swing.JButton jButton1;
     private javax.swing.JLabel jLabel1;

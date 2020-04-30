@@ -215,7 +215,12 @@
 #define RX_STX										0x59
 
 // parameters for display data
+#if UNITS_TYPE          // 1 mph and miles
+#define OEM_WHEEL_FACTOR							90
+#else                   // 0 = km/h and kilometer
 #define OEM_WHEEL_FACTOR							143
+#endif
+
 #define DATA_INDEX_ARRAY_DIM						6
 #define DATA_VALUE_ARRAY_DIM						13
 
