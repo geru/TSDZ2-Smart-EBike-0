@@ -1,3 +1,23 @@
+List of changes mb.20beta1.C
+ 1 - Added field weakening function to increase the motor cadence (by mspider65).
+ 2 - Added other optimizations to motor control, torque sensor and cadence sensor (by mspider65).
+ 3 - Added startup boost function in POWER riding mode, enable/disable at display.
+ 4 - Added HYBRID riding mode, TORQUE + POWER.
+ 5 - Improved "Start-up without pedal rotation" function.
+ 6 - Added a filter to the speed sensor to avoid problems of adjusting the distance from the magnet.
+ 7 - Added error E01 (E06 blinking with XH18) due to speed sensor failure or missing magnet.
+ 8 - Changed the manual reset of battery soc, now more accurate.
+ 9 - Changed the voltage detection for battery bars, the battery resistance is no longer used, (by kaltekaffe).
+10 - Changed "Set parameters" function on display.
+11 - Added choice of data to be displayed at power on.
+12 - Added display of the status of the selected parameter.
+13 - Removed flashing of the options byte file.
+14 - Configurator. Added ability to disable "Walk assist" in "Street mode".
+15 - Configurator. Added enable/disable and sensibility of coaster brake.
+16 - Configurator. By modifying km/h or mph, the speed limits values are also adapted.
+17 - Configurator. Parameters for new functions have been added, others have been removed.
+18 - Configurator. The default values of some parameters have been changed.
+
 List of changes mb.20beta1.B
  1 - added cadence sensor calibration in advanced mode.
  2 - added calibration of maximum torque value (torque sensor range).
