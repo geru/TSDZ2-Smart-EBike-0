@@ -14,7 +14,7 @@
 
 // for oem display
 extern volatile uint8_t ui8_display_fault_code;
-extern volatile uint8_t ui8_working_status;
+extern volatile uint8_t ui8_assist_level;
 
 // cadence sensor
 extern uint16_t ui16_cadence_sensor_ticks_counter_min_speed_adjusted;
@@ -33,7 +33,7 @@ typedef struct _configuration_variables
   uint8_t ui8_pedal_torque_per_10_bit_ADC_step_x100;
   // for oem display
   uint8_t ui8_assist_without_pedal_rotation_enabled;
-  uint8_t ui8_enable_odometer_compensation;
+  uint8_t ui8_assist_whit_error_enabled;
   uint8_t ui8_battery_SOC_percentage_8b;
   uint8_t ui8_set_parameter_enabled;
   uint8_t ui8_street_mode_enabled;

@@ -56,18 +56,11 @@ void UART2_IRQHandler(void) __interrupt(UART2_IRQHANDLER);
 /////////////////////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////////////////
 
-#ifdef MAIN_TIME_DEBUG
-volatile uint8_t ui8_main_time;
-uint8_t ui8_max_motor_time = 0;
-uint8_t ui8_max_ebike_time = 0;
-#endif
-
 int main(void) {
     uint16_t ui16_TIM3_counter = 0;
     uint16_t ui16_ebike_app_controller_counter = 0;
     uint16_t ui16_motor_controller_counter = 0;
     uint16_t ui16_debug_uart_counter = 0;
-
 
     // set clock at the max 16 MHz
     CLK_HSIPrescalerConfig(CLK_PRESCALER_HSIDIV1);
@@ -95,18 +88,8 @@ int main(void) {
         if ((ui16_TIM3_counter - ui16_motor_controller_counter) > 4) {
             // run every 4ms. Max measured motor_controller() duration is 0,15ms
 
-            #ifdef MAIN_TIME_DEBUG
-            // incremented every 50us by PWM interrupt function
-            ui8_main_time = 0;
-            #endif
-
             ui16_motor_controller_counter = ui16_TIM3_counter;
             motor_controller();
-
-            #ifdef MAIN_TIME_DEBUG
-            if (ui8_main_time > ui8_max_motor_time)
-                ui8_max_motor_time = ui8_main_time;
-            #endif
 
             continue;
         }
@@ -114,19 +97,10 @@ int main(void) {
         ui16_TIM3_counter = TIM3_GetCounter();
         if ((ui16_TIM3_counter - ui16_ebike_app_controller_counter) > 25) {
 
-            #ifdef MAIN_TIME_DEBUG
-            // incremented every 50us by PWM interrupt function
-            ui8_main_time = 0;
-            #endif
-
             // run every 25ms. Max measured ebike_app_controller() duration is 3,1 ms.
             ui16_ebike_app_controller_counter = ui16_TIM3_counter;
             ebike_app_controller();
 
-            #ifdef MAIN_TIME_DEBUG
-            if (ui8_main_time > ui8_max_ebike_time)
-                ui8_max_ebike_time = ui8_main_time;
-            #endif
         }
     }
 }

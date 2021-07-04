@@ -67,15 +67,15 @@ uint8_t ui8_max(uint8_t value_a, uint8_t value_b) {
 
 uint16_t filter(uint16_t ui16_new_value, uint16_t ui16_old_value, uint8_t ui8_alpha) {
     if (ui8_alpha < 11) {
-        uint16_t ui16_filtered_value = (uint16_t)(((uint8_t)(10U - ui8_alpha) * ui16_new_value) + (uint16_t)(ui8_alpha * ui16_old_value) + 5) / 10U;
+        uint32_t ui32_temp_new = (uint32_t) ui16_new_value * (uint32_t)(10U - ui8_alpha);
+		uint32_t ui32_temp_old = (uint32_t) ui16_old_value * (uint32_t) ui8_alpha;
+        uint16_t ui16_filtered_value = (uint16_t)((ui32_temp_new + ui32_temp_old + 5U) / 10U);
 
-        if ((ui16_filtered_value == ui16_old_value) && (ui16_filtered_value < ui16_new_value)) {
-            if (ui16_filtered_value < ui16_new_value) {
+        if (ui16_filtered_value == ui16_old_value) {
+            if (ui16_filtered_value < ui16_new_value)
 				ui16_filtered_value++;
-			}
-			else if (ui16_filtered_value > ui16_new_value) {
+			else if (ui16_filtered_value > ui16_new_value)
 				ui16_filtered_value--;
-			}
         }
 
         return ui16_filtered_value;

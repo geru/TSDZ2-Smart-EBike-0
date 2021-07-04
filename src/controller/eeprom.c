@@ -26,7 +26,7 @@ static const uint8_t ui8_default_array[EEPROM_BYTES_STORED] =
   PEDAL_TORQUE_PER_10_BIT_ADC_STEP_X100,		// 8 + EEPROM_BASE_ADDRESS
   // for oem display
   MOTOR_ASSISTANCE_WITHOUT_PEDAL_ROTATION,		// 9 + EEPROM_BASE_ADDRESS
-  ENABLE_ODOMETER_COMPENSATION,					// 10 + EEPROM_BASE_ADDRESS
+  ASSISTANCE_WITH_ERROR_ENABLED,				// 10 + EEPROM_BASE_ADDRESS
   BATTERY_SOC_VALUE,							// 11 + EEPROM_BASE_ADDRESS
   ENABLE_SET_PARAMETER_ON_STARTUP,				// 12 + EEPROM_BASE_ADDRESS
   ENABLE_STREET_MODE_ON_STARTUP,				// 13 + EEPROM_BASE_ADDRESS
@@ -38,7 +38,7 @@ static const uint8_t ui8_default_array[EEPROM_BYTES_STORED] =
   TORQUE_SENSOR_ADV_ON_STARTUP						// 19 + EEPROM_BASE_ADDRESS
 };
 
-volatile uint8_t ui8_error_number = 0;
+static uint8_t ui8_error_number = 0;
 
 void EEPROM_init(void)
 {
@@ -158,7 +158,7 @@ void EEPROM_controller(uint8_t ui8_operation, uint8_t ui8_byte_init)
       // for oem display
 	  p_configuration_variables->ui8_assist_without_pedal_rotation_enabled = FLASH_ReadByte(ADDRESS_MOTOR_ASSISTANCE_WITHOUT_PEDAL_ROTATION);
 	 
-	  p_configuration_variables->ui8_enable_odometer_compensation = FLASH_ReadByte(ADDRESS_ENABLE_ODOMETER_COMPENSATION);
+	  p_configuration_variables->ui8_assist_whit_error_enabled = FLASH_ReadByte(ADDRESS_MOTOR_ASSISTANCE_WITH_ERROR_ENABLED);
 	  p_configuration_variables->ui8_battery_SOC_percentage_8b = FLASH_ReadByte(ADDRESS_BATTERY_SOC);
 	  p_configuration_variables->ui8_set_parameter_enabled = FLASH_ReadByte(ADDRESS_SET_PARAMETER_ON_STARTUP);
 	  p_configuration_variables->ui8_street_mode_enabled = FLASH_ReadByte(ADDRESS_STREET_MODE_ON_STARTUP);
@@ -167,7 +167,6 @@ void EEPROM_controller(uint8_t ui8_operation, uint8_t ui8_byte_init)
 	  p_configuration_variables->ui8_startup_boost_enabled = FLASH_ReadByte(ADDRESS_STARTUP_BOOST_ON_STARTUP);
 	  p_configuration_variables->ui8_auto_display_data_enabled = FLASH_ReadByte(ADDRESS_ENABLE_AUTO_DATA_DISPLAY);
       //p_configuration_variables->ui8_torque_sensor_calibrated = FLASH_ReadByte(ADDRESS_TORQUE_SENSOR_CALIBRATED);
-
 	  
 	  p_configuration_variables->ui8_torque_sensor_adv_enabled = FLASH_ReadByte(ADDRESS_TORQUE_SENSOR_ADV_ON_STARTUP);
 	  
@@ -198,7 +197,7 @@ void EEPROM_controller(uint8_t ui8_operation, uint8_t ui8_byte_init)
       // for oem display
 	  ui8_array[ADDRESS_MOTOR_ASSISTANCE_WITHOUT_PEDAL_ROTATION - EEPROM_BASE_ADDRESS] = p_configuration_variables->ui8_assist_without_pedal_rotation_enabled;
 	  
-	  ui8_array[ADDRESS_ENABLE_ODOMETER_COMPENSATION - EEPROM_BASE_ADDRESS] = p_configuration_variables->ui8_enable_odometer_compensation;
+	  ui8_array[ADDRESS_MOTOR_ASSISTANCE_WITH_ERROR_ENABLED - EEPROM_BASE_ADDRESS] = p_configuration_variables->ui8_assist_whit_error_enabled;
 	  ui8_array[ADDRESS_BATTERY_SOC - EEPROM_BASE_ADDRESS] = p_configuration_variables->ui8_battery_SOC_percentage_8b;
 	  ui8_array[ADDRESS_SET_PARAMETER_ON_STARTUP - EEPROM_BASE_ADDRESS] = p_configuration_variables->ui8_set_parameter_enabled;
 	  ui8_array[ADDRESS_STREET_MODE_ON_STARTUP - EEPROM_BASE_ADDRESS] = p_configuration_variables->ui8_street_mode_enabled;

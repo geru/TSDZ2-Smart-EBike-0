@@ -12,11 +12,7 @@
 #include "config.h"
 #include "common.h"
 
-//#define DEBUG_UART
-//#define PWM_TIME_DEBUG
-//#define MAIN_TIME_DEBUG
-
-#define FW_VERSION 7
+//#define FW_VERSION 7
 
 // PWM related values
 // motor
@@ -24,8 +20,10 @@
 #define PWM_CYCLES_COUNTER_MAX                                  3800U  // 5 erps minimum speed -> 1/5 = 200 ms; 200 ms / 50 us = 4000 (3125 at 15.625KHz)
 #define DOUBLE_PWM_CYCLES_SECOND                                38094 // 25us (2 irq x PWM period)
 // ramp up/down PWM cycles count
-#define PWM_DUTY_CYCLE_RAMP_UP_INVERSE_STEP_DEFAULT             195    // 160 -> 160 * 64 us for every duty cycle increment at 15.625KHz
-#define PWM_DUTY_CYCLE_RAMP_UP_INVERSE_STEP_MIN                 24     // 20 -> 20 * 64 us for every duty cycle increment at 15.625KHz
+//#define PWM_DUTY_CYCLE_RAMP_UP_INVERSE_STEP_DEFAULT             195    // 160 -> 160 * 64 us for every duty cycle increment at 15.625KHz
+//#define PWM_DUTY_CYCLE_RAMP_UP_INVERSE_STEP_MIN                 24     // 20 -> 20 * 64 us for every duty cycle increment at 15.625KHz
+#define PWM_DUTY_CYCLE_RAMP_UP_INVERSE_STEP_DEFAULT             160    // 160 -> 160 * 64 us for every duty cycle increment at 15.625KHz
+#define PWM_DUTY_CYCLE_RAMP_UP_INVERSE_STEP_MIN                 20     // 20 -> 20 * 64 us for every duty cycle increment at 15.625KHz
 #define PWM_DUTY_CYCLE_RAMP_DOWN_INVERSE_STEP_DEFAULT           49     // 40 -> 40 * 64 us for every duty cycle decrement at 15.625KHz
 #define PWM_DUTY_CYCLE_RAMP_DOWN_INVERSE_STEP_MIN               10     // 8 -> 8 * 64 us for every duty cycle decrement at 15.625KHz
 #define MOTOR_OVER_SPEED_ERPS                                   650    // motor max speed | 30 points for the sinewave at max speed (less than PWM_CYCLES_SECOND/30)
@@ -78,12 +76,12 @@
 
 // Torque sensor values
 #define ADC_TORQUE_SENSOR_CALIBRATION_OFFSET    6
-// scale the torque assist target current
-#define TORQUE_ASSIST_FACTOR_DENOMINATOR		110
 // adc torque offset gap value for error
-#define ADC_PEDAL_TORQUE_OFFSET_THRESHOLD		25
+#define ADC_TORQUE_SENSOR_OFFSET_THRESHOLD		25
 // adc torque delta range value for remapping
 #define ADC_TORQUE_SENSOR_RANGE_MIN	  			160
+// scale the torque assist target current
+#define TORQUE_ASSIST_FACTOR_DENOMINATOR		110
 
 /*---------------------------------------------------------
  NOTE: regarding motor start interpolation
@@ -93,11 +91,12 @@
  interpolation 60 degrees. Must be found experimentally
  but a value of 25 may be good.
  ---------------------------------------------------------*/
-#define ADC_10_BIT_BATTERY_CURRENT_MAX                            112     // 18 amps
-#define ADC_10_BIT_MOTOR_PHASE_CURRENT_MAX                        187     // 30 amps
-//#define ADC_10_BIT_BATTERY_CURRENT_MAX                            106     // 17 amps
-//#define ADC_10_BIT_MOTOR_PHASE_CURRENT_MAX                        177     // 28 amps
-#define ADC_10_BIT_BATTERY_CURRENT_MIN		                      1
+ 
+#define ADC_10_BIT_BATTERY_CURRENT_MAX                            112	// 18 amps
+#define ADC_10_BIT_MOTOR_PHASE_CURRENT_MAX                        187	// 30 amps
+//#define ADC_10_BIT_BATTERY_CURRENT_MAX                            106	// 17 amps
+//#define ADC_10_BIT_MOTOR_PHASE_CURRENT_MAX                        177	// 28 amps
+//#define ADC_10_BIT_BATTERY_CURRENT_MIN		                      1		// 1 = 0.16 Amp
 
 /*---------------------------------------------------------
  NOTE: regarding ADC battery current max
@@ -222,13 +221,15 @@
 #define NO_FUNCTION									0
 #define NO_FAULT									0
 #define NO_ERROR                                  	0 
-#define ERROR_MOTOR_BLOCKED                       	4 // E04
+
+#define ERROR_OVERVOLTAGE							1 // E01 (E06 blinking for XH18)
 #define ERROR_TORQUE_SENSOR                       	2 // E02
 #define ERROR_CADENCE_SENSOR			          	3 // E03
+#define ERROR_MOTOR_BLOCKED                       	4 // E04
 #define ERROR_OVERTEMPERATURE						6 // E06
-#define ERROR_OVERVOLTAGE							8 // E08
+#define ERROR_SPEED_SENSOR							8 // E08
 #define ERROR_WRITE_EEPROM  					  	9 // E09 (E08 blinking for XH18)
-#define ERROR_SPEED_SENSOR                       	1 // E01 (E06 blinking for XH18)
+
 
 // optional ADC function
 #if ENABLE_TEMPERATURE_LIMIT  && ENABLE_THROTTLE
@@ -259,9 +260,10 @@
 #define WHEEL_PERIMETER_1							(uint8_t) ((WHEEL_PERIMETER >> 8) & 0x00FF)
 
 // wheel speed parameters
-#define OEM_WHEEL_SPEED_DIVISOR						315
+//#define OEM_WHEEL_SPEED_DIVISOR						315 // at 15.625KHz
+#define OEM_WHEEL_SPEED_DIVISOR						384 // at 19.047KHz
 
-// BATTERY PARAMETERS
+// BATTERY PARAMETER
 // battery low voltage cut off
 #define BATTERY_LOW_VOLTAGE_CUT_OFF_X10_0		(uint8_t) ((uint16_t)(BATTERY_LOW_VOLTAGE_CUT_OFF * 10) & 0x00FF)
 #define BATTERY_LOW_VOLTAGE_CUT_OFF_X10_1		(uint8_t) (((uint16_t)(BATTERY_LOW_VOLTAGE_CUT_OFF * 10) >> 8) & 0x00FF)
@@ -325,5 +327,6 @@
 // zero odometer compensation
 #define ZERO_ODOMETER_COMPENSATION				100000000
 
+#define ASSISTANCE_WITH_ERROR_ENABLED					0
 
 #endif // _MAIN_H_

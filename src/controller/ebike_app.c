@@ -15,6 +15,7 @@
 #include "interrupts.h"
 #include "adc.h"
 #include "motor.h"
+
 #include "pwm.h"
 #include "uart.h"
 #include "brake.h"
@@ -25,7 +26,7 @@
 volatile struct_configuration_variables m_configuration_variables;
 
 // display menu
-static uint8_t ui8_assist_level = ECO;
+volatile uint8_t ui8_assist_level = ECO;
 static uint8_t ui8_assist_level_temp = ECO;
 static uint8_t ui8_walk_assist_flag = 0;
 static uint8_t ui8_riding_mode_temp = 0;
@@ -42,6 +43,7 @@ static uint8_t ui8_menu_function_enabled = 0;
 static uint8_t ui8_display_data_enabled = 0;
 static uint16_t ui16_display_data = 0;
 static uint8_t ui8_auto_display_data_flag = 0;
+static uint8_t ui8_auto_display_data_status = 0;
 static uint16_t ui16_display_data_factor = 0;
 static uint8_t ui8_display_blinking_code = 0;
 static uint8_t ui8_delay_display_function = DELAY_MENU_ON;
@@ -66,6 +68,7 @@ static uint8_t ui8_lights_configuration_3 = LIGHTS_CONFIGURATION_3;
 static uint8_t ui8_lights_configuration_temp = LIGHTS_CONFIGURATION_ON_STARTUP;
 
 // system
+static uint8_t ui8_riding_mode_parameter = 0;
 static uint8_t ui8_system_state = NO_ERROR;
 static uint8_t ui8_motor_enabled = 1;
 static uint8_t ui8_assist_without_pedal_rotation_threshold = ASSISTANCE_WITHOUT_PEDAL_ROTATION_THRESHOLD;
@@ -73,9 +76,6 @@ static uint8_t ui8_lights_state = 0;
 static uint8_t ui8_optional_ADC_function = OPTIONAL_ADC_FUNCTION;
 volatile uint8_t ui8_optional_ADC_function_temp = OPTIONAL_ADC_FUNCTION;
 static uint8_t ui8_motor_blocked_counter_threshold = MOTOR_BLOCKED_COUNTER_THRESHOLD * 4;
-
-// riding mode
-static uint8_t ui8_riding_mode_parameter = 0;
 static uint8_t ui8_walk_assist_counter = 0;
 static uint8_t ui8_walk_assist_level = 0;
 	
@@ -104,6 +104,7 @@ static uint8_t ui8_adc_battery_current_max = ADC_10_BIT_BATTERY_CURRENT_MAX;
 static uint8_t ui8_adc_battery_current_target = 0;
 static uint8_t ui8_duty_cycle_target = 0;
 static uint8_t ui8_target_battery_max_power_div25 = TARGET_MAX_BATTERY_POWER_DIV25;
+static uint8_t ui8_adc_battery_current_min = ADC_10_BIT_BATTERY_CURRENT_MIN;
 
 // brakes
 static uint8_t ui8_brakes_engaged = 0;
@@ -119,12 +120,11 @@ volatile uint16_t ui16_adc_pedal_torque_offset_fix = PEDAL_TORQUE_ADC_OFFSET;
 volatile uint16_t ui16_adc_pedal_torque_offset_min = PEDAL_TORQUE_ADC_OFFSET;
 volatile uint16_t ui16_adc_pedal_torque_offset_max = PEDAL_TORQUE_ADC_OFFSET;
 volatile uint8_t ui8_adc_pedal_torque_offset_error = 0;
-static uint16_t ui16_adc_pedal_torque_range = PEDAL_TORQUE_ADC_MAX - PEDAL_TORQUE_ADC_OFFSET;
+static uint16_t ui16_adc_pedal_torque_range = 0;
 uint8_t ui8_adc_coaster_brake_threshold = 0;
-static uint16_t ui8_adc_coaster_brake_threshold_init = 0;
-static uint16_t ui8_adc_coaster_brake_threshold_fix = 0;
 static uint16_t ui16_adc_pedal_torque = 0;
 static uint16_t ui16_adc_pedal_torque_delta = 0;
+static uint16_t ui16_adc_pedal_torque_delta_no_boost = 0;
 static uint16_t ui16_pedal_torque_x100 = 0;
 static uint16_t ui16_human_power_x10 = 0;
 static uint8_t ui8_torque_sensor_calibrated = TORQUE_SENSOR_CALIBRATED;
@@ -381,8 +381,7 @@ volatile uint8_t ui8_cruise_button_flag = 0;
 
 // startup boost
 static uint8_t ui8_startup_boost_enabled_temp = STARTUP_BOOST_ON_STARTUP;
-static uint16_t ui16_startup_boost_factor_array[120]; 
-static uint8_t ui16_adc_pedal_torque_delta_boost = 0;
+static uint16_t ui16_startup_boost_factor_array[120];
 
 // UART
 volatile uint8_t ui8_received_package_flag = 0;
@@ -424,6 +423,7 @@ static void get_battery_current_filtered(void);
 static void get_pedal_torque(void);
 static void calc_wheel_speed(void);
 static void calc_cadence(void);
+static void calc_pedal_torque_offset(void);
 
 static void ebike_control_lights(void);
 static void ebike_control_motor(void);
@@ -459,7 +459,11 @@ void ebike_app_init(void)
 	// check if assist without pedal rotation threshold is valid (safety)
 	if (ui8_assist_without_pedal_rotation_threshold > 100)
 		ui8_assist_without_pedal_rotation_threshold = 100;
-
+	
+	// check if adc battery current min is valid (safety)
+	if(ui8_adc_battery_current_min > 3)
+		ui8_adc_battery_current_min = 0;
+	
 	// check the cruise speed threshold x10 in street mode
 	if(ui8_cruise_threshold_speed_x10_offroad < CRUISE_THRESHOLD_SPEED_X10_DEFAULT)
 		ui8_cruise_threshold_speed_x10_street = CRUISE_THRESHOLD_SPEED_X10_DEFAULT;
@@ -484,8 +488,8 @@ void ebike_app_init(void)
 	ui8_display_function_status[2][ECO] = m_configuration_variables.ui8_torque_sensor_adv_enabled;
 	// assist without pedal rotation on startup
 	ui8_display_function_status[1][TURBO] = m_configuration_variables.ui8_assist_without_pedal_rotation_enabled;
-	// odometer compensation on startup
-	ui8_display_function_status[2][TURBO] = m_configuration_variables.ui8_enable_odometer_compensation;
+	// system error enabled on startup
+	ui8_display_function_status[2][TURBO] = m_configuration_variables.ui8_assist_whit_error_enabled;
 	// riding mode on startup
 	ui8_display_riding_mode = m_configuration_variables.ui8_riding_mode;
 	// lights configuration on startup
@@ -521,38 +525,37 @@ void ebike_app_init(void)
 
 void ebike_app_controller(void)
 {
-    calc_wheel_speed();             // calculate the wheel speed
-    calc_cadence();     			// calculate the cadence and set limits from wheel speed
+    calc_wheel_speed();	// calculate the wheel speed
+    calc_cadence();		// calculate the cadence and set limits from wheel speed
 
     get_battery_voltage_filtered(); // get filtered voltage from FOC calculations
     get_battery_current_filtered(); // get filtered current from FOC calculations
-    get_pedal_torque();             // get pedal torque
+    get_pedal_torque();				// get pedal torque
 
-    check_system();           		// check if there are any errors for motor control
-    check_brakes();             	// check if brakes are enabled for motor control
+    check_system();					// check if there are any errors for motor control
+    check_brakes();					// check if brakes are enabled for motor control
 
     // send/receive data every 4 cycles (25ms * 4)
 	static uint8_t ui8_counter;
-	static uint8_t ui8_cycle;
-
-	ui8_cycle = ui8_counter++ & 0x03;
-	switch (ui8_cycle) {
+	
+	switch (ui8_counter++ & 0x03) {
 		case 0: 
 			uart_receive_package();
 			break;
 		case 1:
-			check_battery_soc();
-			break;
-		case 2:
-			calc_oem_wheel_speed();
-			ebike_control_lights();
-			break;
-		case 3:
 			uart_send_package();
 			break;
+		case 2:
+			ebike_control_lights();
+			calc_oem_wheel_speed();
+			break;
+		case 3:
+			check_battery_soc();
+			break;
 	}
-
-    ebike_control_motor(); // use received data and sensor input to control motor
+	
+	// use received data and sensor input to control motor
+    ebike_control_motor();
 
     /*------------------------------------------------------------------------
 
@@ -574,7 +577,9 @@ static void ebike_control_motor(void)
     ui8_duty_cycle_target = 0;
 
     // reset initialization of Cruise PID controller
-    if (m_configuration_variables.ui8_riding_mode != CRUISE_MODE) {ui8_cruise_PID_initialize = 1;}
+    if (m_configuration_variables.ui8_riding_mode != CRUISE_MODE) {
+		ui8_cruise_PID_initialize = 1;
+	}
 
     // select riding mode
     switch (m_configuration_variables.ui8_riding_mode) {
@@ -618,7 +623,11 @@ static void ebike_control_motor(void)
     }
 
     // reset control parameters if... (safety)
-    if (ui8_brakes_engaged || ui8_system_state != NO_ERROR || !ui8_motor_enabled || ui8_riding_mode_parameter == 0) {
+    if((ui8_brakes_engaged) || (!ui8_assist_level) ||
+	  (ui8_system_state == ERROR_MOTOR_BLOCKED) ||
+	  (!ui8_motor_enabled) ||
+	  (ui8_riding_mode_parameter == 0) ||
+	  ((ui8_system_state != NO_ERROR)&&(!m_configuration_variables.ui8_assist_whit_error_enabled))) {
         ui8_controller_duty_cycle_ramp_up_inverse_step = PWM_DUTY_CYCLE_RAMP_UP_INVERSE_STEP_DEFAULT;
         ui8_controller_duty_cycle_ramp_down_inverse_step = PWM_DUTY_CYCLE_RAMP_DOWN_INVERSE_STEP_MIN;
         ui8_controller_adc_battery_current_target = 0;
@@ -648,7 +657,7 @@ static void ebike_control_motor(void)
         if (ui8_duty_cycle_ramp_down_inverse_step < PWM_DUTY_CYCLE_RAMP_DOWN_INVERSE_STEP_MIN) {
             ui8_duty_cycle_ramp_down_inverse_step = PWM_DUTY_CYCLE_RAMP_DOWN_INVERSE_STEP_MIN;
         }
-
+		
         // set duty cycle ramp up in controller
         ui8_controller_duty_cycle_ramp_up_inverse_step = ui8_duty_cycle_ramp_up_inverse_step;
 
@@ -660,7 +669,7 @@ static void ebike_control_motor(void)
 
         // set target duty cycle in controller
         ui8_controller_duty_cycle_target = ui8_duty_cycle_target;
-    }
+	}
 }
 
 
@@ -671,27 +680,17 @@ static void apply_power_assist()
 	// check for assist without pedal rotation when there is no pedal rotation
 	if(m_configuration_variables.ui8_assist_without_pedal_rotation_enabled) {
 		if((ui8_pedal_cadence_RPM < 4) &&
-		   (ui16_adc_pedal_torque_delta > (110 - ui8_assist_without_pedal_rotation_threshold))) {
+		   (ui16_adc_pedal_torque_delta_no_boost > (110 - ui8_assist_without_pedal_rotation_threshold))) {
+		   //(ui16_adc_pedal_torque_delta > (110 - ui8_assist_without_pedal_rotation_threshold))) {
 				ui8_pedal_cadence_RPM = 4;
 		}
 	}
 	
-	// pedal torque delta + torque startup boost
-	if(m_configuration_variables.ui8_startup_boost_enabled) {
-		if(ui8_pedal_cadence_RPM > 120) {ui8_pedal_cadence_RPM = 120;}
-		// calculate torque startup boost
-		uint16_t ui16_temp = (uint16_t)(((uint32_t) ui16_adc_pedal_torque_delta * ui16_startup_boost_factor_array[ui8_pedal_cadence_RPM]) / 100);
-		ui16_adc_pedal_torque_delta_boost = ui16_adc_pedal_torque_delta + ui16_temp;
-	}
-	else {
-		ui16_adc_pedal_torque_delta_boost = ui16_adc_pedal_torque_delta;
-	}
-	
 	// calculate torque on pedals + torque startup boost
-    uint32_t ui32_pedal_torque_x100 = ((uint32_t) ui16_adc_pedal_torque_delta_boost * m_configuration_variables.ui8_pedal_torque_per_10_bit_ADC_step_x100);
+    uint32_t ui32_pedal_torque_x100 = (uint32_t)(ui16_adc_pedal_torque_delta * m_configuration_variables.ui8_pedal_torque_per_10_bit_ADC_step_x100);
 	
     // calculate power assist by multiplying human power with the power assist multiplier
-    uint32_t ui32_power_assist_x100 = (((uint16_t)(ui8_pedal_cadence_RPM * ui8_power_assist_multiplier_x50))
+    uint32_t ui32_power_assist_x100 = (((uint32_t)(ui8_pedal_cadence_RPM * ui8_power_assist_multiplier_x50))
             * ui32_pedal_torque_x100) / 480U; // see note below
 
     /*------------------------------------------------------------------------
@@ -740,9 +739,10 @@ static void apply_power_assist()
     } else {
         ui8_adc_battery_current_target = ui16_adc_battery_current_target;
     }
-
-	if(((ui8_pedal_cadence_RPM)||(ui16_wheel_speed_x10))&&(!ui8_adc_battery_current_target)) {
-		ui8_adc_battery_current_target = ADC_10_BIT_BATTERY_CURRENT_MIN;
+	
+	if((m_configuration_variables.ui8_assist_without_pedal_rotation_enabled)&&
+	   (ui8_pedal_cadence_RPM)&&(!ui8_adc_battery_current_target)) {
+			ui8_adc_battery_current_target = ui8_adc_battery_current_min;
 	}
 	
     // set duty cycle target
@@ -763,7 +763,10 @@ static void apply_torque_assist()
 				ui8_pedal_cadence_RPM = 1;
 		}
 	}
-
+	
+	if(m_configuration_variables.ui8_assist_whit_error_enabled)
+		ui8_pedal_cadence_RPM = 1;
+	
     // calculate torque assistance
     if (ui16_adc_pedal_torque_delta && ui8_pedal_cadence_RPM) {
         // get the torque assist factor
@@ -797,10 +800,11 @@ static void apply_torque_assist()
             ui8_adc_battery_current_target = ui16_adc_battery_current_target_torque_assist;
         }
 
-		if(((ui8_pedal_cadence_RPM)||(ui16_wheel_speed_x10))&&(!ui8_adc_battery_current_target)) {
-			ui8_adc_battery_current_target = ADC_10_BIT_BATTERY_CURRENT_MIN;
+		if((m_configuration_variables.ui8_assist_without_pedal_rotation_enabled)&&
+	       (ui8_pedal_cadence_RPM)&&(!ui8_adc_battery_current_target)) {
+				ui8_adc_battery_current_target = ui8_adc_battery_current_min;
 		}
-	
+		
         // set duty cycle target
         if (ui8_adc_battery_current_target) {
             ui8_duty_cycle_target = PWM_DUTY_CYCLE_MAX;
@@ -853,8 +857,8 @@ static void apply_cadence_assist()
 
 static void apply_emtb_assist()
 {
-#define eMTB_ASSIST_ADC_TORQUE_OFFSET    10
-
+//#define eMTB_ASSIST_ADC_TORQUE_OFFSET    10
+#define eMTB_ASSIST_ADC_TORQUE_OFFSET    5
 	// check for assist without pedal rotation when there is no pedal rotation
 	if(m_configuration_variables.ui8_assist_without_pedal_rotation_enabled) {
 		if((!ui8_pedal_cadence_RPM)&&
@@ -863,6 +867,9 @@ static void apply_emtb_assist()
 		}
 	}
 
+	if(m_configuration_variables.ui8_assist_whit_error_enabled)
+		ui8_pedal_cadence_RPM = 1;
+	
 	if ((ui16_adc_pedal_torque_delta > 0) && 
 		(ui16_adc_pedal_torque_delta < (eMTB_POWER_FUNCTION_ARRAY_SIZE - eMTB_ASSIST_ADC_TORQUE_OFFSET)) &&
 		(ui8_pedal_cadence_RPM))
@@ -922,10 +929,11 @@ static void apply_emtb_assist()
             ui8_adc_battery_current_target = ui8_adc_battery_current_target_eMTB_assist;
         }
 
-		if(((ui8_pedal_cadence_RPM)||(ui16_wheel_speed_x10))&&(!ui8_adc_battery_current_target)) {
-			ui8_adc_battery_current_target = ADC_10_BIT_BATTERY_CURRENT_MIN;
+		if((m_configuration_variables.ui8_assist_without_pedal_rotation_enabled)&&
+		   (ui8_pedal_cadence_RPM)&&(!ui8_adc_battery_current_target)) {
+				ui8_adc_battery_current_target = ui8_adc_battery_current_min;
 		}
-	
+		
         // set duty cycle target
         if (ui8_adc_battery_current_target) {
             ui8_duty_cycle_target = PWM_DUTY_CYCLE_MAX;
@@ -1116,7 +1124,7 @@ static void apply_cruise()
 
 
 static void apply_hybrid_assist()
-{		
+{
 	uint16_t ui16_adc_battery_current_target_power_assist;
 	uint16_t ui16_adc_battery_current_target_torque_assist;
 	uint16_t ui16_adc_battery_current_target;
@@ -1146,7 +1154,7 @@ static void apply_hybrid_assist()
 	// calculate power assistance
 	// get the power assist multiplier
 	uint8_t ui8_power_assist_multiplier_x50 = ui8_riding_mode_parameter;
-		
+
 	// calculate power assist by multiplying human power with the power assist multiplier
     uint32_t ui32_power_assist_x100 = (((uint16_t)(ui8_pedal_cadence_RPM * ui8_power_assist_multiplier_x50))
             * ui16_pedal_torque_x100) / 480U; // see note below
@@ -1174,7 +1182,6 @@ static void apply_hybrid_assist()
                 (uint8_t)ui8_duty_cycle_ramp_up_inverse_step_default,
                 (uint8_t)PWM_DUTY_CYCLE_RAMP_UP_INVERSE_STEP_MIN);
 
-																							  
         ui8_duty_cycle_ramp_down_inverse_step = map_ui8((uint8_t) ui16_wheel_speed_x10,
                 (uint8_t)40, // 40 -> 4 kph
                 (uint8_t)200, // 200 -> 20 kph
@@ -1186,8 +1193,9 @@ static void apply_hybrid_assist()
 	if (ui16_adc_battery_current_target > ui8_adc_battery_current_max) { ui8_adc_battery_current_target = ui8_adc_battery_current_max; }
 	else { ui8_adc_battery_current_target = ui16_adc_battery_current_target; }
 	
-	if(((ui8_pedal_cadence_RPM)||(ui16_wheel_speed_x10))&&(!ui8_adc_battery_current_target)) {
-		ui8_adc_battery_current_target = ADC_10_BIT_BATTERY_CURRENT_MIN;
+	if((m_configuration_variables.ui8_assist_without_pedal_rotation_enabled)&&
+	   (ui8_pedal_cadence_RPM)&&(!ui8_adc_battery_current_target)) {
+			ui8_adc_battery_current_target = ui8_adc_battery_current_min;
 	}
 	
 	// set duty cycle target
@@ -1236,7 +1244,7 @@ static void apply_throttle()
             (uint8_t) ADC_THROTTLE_MAX_VALUE,
             (uint8_t) 0,
             (uint8_t) 255);
-
+			
 	// disable throttle at level 0-OFF
 	if(ui8_assist_level == 0) { ui8_throttle_adc = 0; }
 	
@@ -1345,7 +1353,7 @@ static void calc_cadence(void)
         ui8_pedal_cadence_RPM = (uint8_t)((PWM_CYCLES_SECOND * 3U) / ui16_cadence_sensor_ticks_temp);
     else
         ui8_pedal_cadence_RPM = 0;
-
+	
     /*-------------------------------------------------------------------------------------------------
 
      NOTE: regarding the cadence calculation
@@ -1362,6 +1370,34 @@ static void calc_cadence(void)
 }
 
 
+static void calc_pedal_torque_offset(void)
+{
+	if((ui16_adc_pedal_torque_offset_fix > ui16_adc_pedal_torque_offset_min)&& 
+	  (ui16_adc_pedal_torque_offset_fix < ui16_adc_pedal_torque_offset_max))
+		  ui8_adc_pedal_torque_offset_error = 0;
+	else
+		  ui8_adc_pedal_torque_offset_error = 1;
+
+	if((m_configuration_variables.ui8_torque_sensor_adv_enabled)&&
+	   (ui8_torque_sensor_calibrated)&&(!ui8_adc_pedal_torque_offset_error))
+		  ui16_adc_pedal_torque_offset = ui16_adc_pedal_torque_offset_fix + ADC_TORQUE_SENSOR_CALIBRATION_OFFSET;
+	else
+		  ui16_adc_pedal_torque_offset = ui16_adc_pedal_torque_offset_init + ADC_TORQUE_SENSOR_CALIBRATION_OFFSET;
+	
+	#if COASTER_BRAKE_ENABLED
+    if (ui16_adc_pedal_torque_offset > COASTER_BRAKE_TORQUE_THRESHOLD) {
+        if ((ui16_adc_pedal_torque_offset % 4) < 3)
+            ui8_adc_coaster_brake_threshold = (ui16_adc_pedal_torque_offset >> 2) - (COASTER_BRAKE_TORQUE_THRESHOLD >> 2);
+        else
+            ui8_adc_coaster_brake_threshold = (ui16_adc_pedal_torque_offset >> 2) - ((COASTER_BRAKE_TORQUE_THRESHOLD >> 2) - 1);
+    }
+	else {
+        ui8_adc_coaster_brake_threshold = 0;
+	}
+	#endif
+}
+
+
 static void get_battery_voltage_filtered(void)
 {
     ui16_battery_voltage_filtered_x1000 = ui16_adc_battery_voltage_filtered * BATTERY_VOLTAGE_PER_10_BIT_ADC_STEP_X1000;
@@ -1373,66 +1409,25 @@ static void get_battery_current_filtered(void)
 	ui8_battery_current_filtered_x10 = (uint8_t)(((uint16_t) ui8_adc_battery_current_filtered * BATTERY_CURRENT_PER_10_BIT_ADC_STEP_X100) / 10);
 }
 
-#define TOFFSET_CYCLES 60
+#define TOFFSET_CYCLES 120
 static uint8_t toffset_cycle_counter = 0;
 
 static void get_pedal_torque(void)
 {
-    if (toffset_cycle_counter < TOFFSET_CYCLES) {
+    if(toffset_cycle_counter < TOFFSET_CYCLES) {
         uint16_t ui16_tmp = UI16_ADC_10_BIT_TORQUE_SENSOR;
         ui16_adc_pedal_torque_offset_init = filter(ui16_tmp, ui16_adc_pedal_torque_offset_init, 2);
         toffset_cycle_counter++;
 		
-        if (toffset_cycle_counter == TOFFSET_CYCLES) {
-			ui16_adc_pedal_torque_offset_fix = PEDAL_TORQUE_ADC_OFFSET;
-			ui16_adc_pedal_torque_offset_min = ui16_adc_pedal_torque_offset_init - ADC_PEDAL_TORQUE_OFFSET_THRESHOLD;
-			ui16_adc_pedal_torque_offset_max = ui16_adc_pedal_torque_offset_init + ADC_PEDAL_TORQUE_OFFSET_THRESHOLD;
-				
-			if(!((ui16_adc_pedal_torque_offset_fix > ui16_adc_pedal_torque_offset_min)&& 
-			  (ui16_adc_pedal_torque_offset_fix < ui16_adc_pedal_torque_offset_max)))
-				ui8_adc_pedal_torque_offset_error = 1;
-
-			ui16_adc_pedal_torque_offset_fix += ADC_TORQUE_SENSOR_CALIBRATION_OFFSET;
-			ui16_adc_pedal_torque_offset_init += ADC_TORQUE_SENSOR_CALIBRATION_OFFSET;
-			
-			#if COASTER_BRAKE_ENABLED
-            if (ui16_adc_pedal_torque_offset_fix > COASTER_BRAKE_TORQUE_THRESHOLD) {
-                if ((ui16_adc_pedal_torque_offset_fix % 4) < 3)
-                    ui8_adc_coaster_brake_threshold_fix = (ui16_adc_pedal_torque_offset_fix >> 2) - (COASTER_BRAKE_TORQUE_THRESHOLD >> 2);
-                else
-                    ui8_adc_coaster_brake_threshold_fix = (ui16_adc_pedal_torque_offset_fix >> 2) - ((COASTER_BRAKE_TORQUE_THRESHOLD >> 2) - 1);
-            }
-			else {
-                ui8_adc_coaster_brake_threshold_fix = 0;
-			}
-			
-            if (ui16_adc_pedal_torque_offset_init > COASTER_BRAKE_TORQUE_THRESHOLD) {
-                if ((ui16_adc_pedal_torque_offset_init % 4) < 3)
-                    ui8_adc_coaster_brake_threshold_init = (ui16_adc_pedal_torque_offset_init >> 2) - (COASTER_BRAKE_TORQUE_THRESHOLD >> 2);
-                else
-                    ui8_adc_coaster_brake_threshold_init = (ui16_adc_pedal_torque_offset_init >> 2) - ((COASTER_BRAKE_TORQUE_THRESHOLD >> 2) - 1);
-            }
-			else {
-                ui8_adc_coaster_brake_threshold_init = 0;
-			}
-			#endif
-			
-			if((m_configuration_variables.ui8_torque_sensor_adv_enabled)&&
-			  (ui8_torque_sensor_calibrated)&&(!ui8_adc_pedal_torque_offset_error)) {
-				ui16_adc_pedal_torque_offset = ui16_adc_pedal_torque_offset_fix;
-				#if COASTER_BRAKE_ENABLED
-				ui8_adc_coaster_brake_threshold = ui8_adc_coaster_brake_threshold_fix;
-				#endif
-			}
-			else {
-				ui16_adc_pedal_torque_offset = ui16_adc_pedal_torque_offset_init;
-				#if COASTER_BRAKE_ENABLED
-				ui8_adc_coaster_brake_threshold = ui8_adc_coaster_brake_threshold_init;
-				#endif
-			}
-        }
+		if(toffset_cycle_counter == TOFFSET_CYCLES) {
+			ui16_adc_pedal_torque_offset_min = ui16_adc_pedal_torque_offset_init - ADC_TORQUE_SENSOR_OFFSET_THRESHOLD;
+			ui16_adc_pedal_torque_offset_max = ui16_adc_pedal_torque_offset_init + ADC_TORQUE_SENSOR_OFFSET_THRESHOLD;
+			calc_pedal_torque_offset();
+		}
+		
         ui16_adc_pedal_torque = ui16_adc_pedal_torque_offset;
-    } else {
+    }
+	else {
         // get adc pedal torque
         ui16_adc_pedal_torque = UI16_ADC_10_BIT_TORQUE_SENSOR;
     }
@@ -1450,13 +1445,26 @@ static void get_pedal_torque(void)
 	else {
         ui16_adc_pedal_torque_delta = 0;
     }
-
-	// calculate torque on pedals x100
+	
+	// for startup assist without pedaling in power assist mode
+	ui16_adc_pedal_torque_delta_no_boost = ui16_adc_pedal_torque_delta;
+		
+    // calculate torque on pedals
     ui16_pedal_torque_x100 = ui16_adc_pedal_torque_delta * m_configuration_variables.ui8_pedal_torque_per_10_bit_ADC_step_x100;
-
+	
 	// calculate human power x10
-	ui16_human_power_x10 = (uint16_t)(((uint32_t) ui16_pedal_torque_x100 * ui8_pedal_cadence_RPM) / 96); // see note below
- 
+	ui16_human_power_x10 = (ui16_pedal_torque_x100 * ui8_pedal_cadence_RPM) / 96; // see note below
+	
+	// pedal torque delta + startup boost in power assist mode
+	if((m_configuration_variables.ui8_startup_boost_enabled)&&
+	  (m_configuration_variables.ui8_riding_mode == POWER_ASSIST_MODE)) {
+		if(ui8_pedal_cadence_RPM > 120) {ui8_pedal_cadence_RPM = 120;}
+		
+		// calculate startup boost torque & new pedal torque delta
+		uint32_t ui32_temp = ((uint32_t)(ui16_adc_pedal_torque_delta * ui16_startup_boost_factor_array[ui8_pedal_cadence_RPM])) / 100;
+		ui16_adc_pedal_torque_delta += (uint16_t) ui32_temp;
+	}
+	
 	/*------------------------------------------------------------------------
 
     NOTE: regarding the human power calculation
@@ -1489,7 +1497,93 @@ static void check_brakes()
 
 static void check_system()
 {
-//#define MOTOR_BLOCKED_COUNTER_THRESHOLD               8  // 8 * 25ms => 0.2 second
+	
+#define CHECK_SPEED_SENSOR_COUNTER_THRESHOLD          500 // 500 * 25ms = 12.5 seconds
+#define MOTOR_ERPS_SPEED_THRESHOLD	                  180
+	static uint16_t ui16_check_speed_sensor_counter;
+	static uint16_t ui16_error_speed_sensor_counter;
+	
+	// check speed sensor
+	if(ui16_motor_speed_erps > MOTOR_ERPS_SPEED_THRESHOLD) { ui16_check_speed_sensor_counter++; }
+	if(ui16_wheel_speed_x10) { ui16_check_speed_sensor_counter = 0; }
+	  
+	if(ui16_check_speed_sensor_counter > CHECK_SPEED_SENSOR_COUNTER_THRESHOLD) {
+		
+		// set speed sensor error code
+		ui8_system_state = ERROR_SPEED_SENSOR;
+		
+	}
+	else if (ui8_system_state == ERROR_SPEED_SENSOR) {
+		
+		// increment speed sensor error reset counter
+        ui16_error_speed_sensor_counter++;
+
+        // check if the counter has counted to the set threshold for reset
+        if (ui16_error_speed_sensor_counter > CHECK_SPEED_SENSOR_COUNTER_THRESHOLD) {
+            // reset speed sensor error code
+            if (ui8_system_state == ERROR_SPEED_SENSOR) {
+                ui8_system_state = NO_ERROR;
+				ui16_error_speed_sensor_counter = 0;
+            }
+		}
+	}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+#define CHECK_CADENCE_SENSOR_COUNTER_THRESHOLD          1000 // 1000 * 25ms = 25 seconds
+#define CADENCE_SENSOR_RESET_COUNTER_THRESHOLD         	100  // 100 * 25ms = 2,5 seconds
+#define ADC_TORQUE_SENSOR_DELTA_THRESHOLD				80	// to check
+	static uint16_t ui16_check_cadence_sensor_counter;
+	static uint8_t ui8_error_cadence_sensor_counter;
+	
+	// check cadence sensor
+	if((ui16_adc_pedal_torque_delta_no_boost > ADC_TORQUE_SENSOR_DELTA_THRESHOLD)&&
+	  ((ui8_pedal_cadence_RPM > 130)||(!ui8_pedal_cadence_RPM))) {
+		ui16_check_cadence_sensor_counter++;
+	}
+	else {
+		ui16_check_cadence_sensor_counter = 0;
+	}
+	
+	if(ui16_check_cadence_sensor_counter > CHECK_CADENCE_SENSOR_COUNTER_THRESHOLD) {
+		// set cadence sensor error code
+		ui8_system_state = ERROR_CADENCE_SENSOR;
+	}
+	else if (ui8_system_state == ERROR_CADENCE_SENSOR) {
+		// increment cadence sensor error reset counter
+        ui8_error_cadence_sensor_counter++;
+
+        // check if the counter has counted to the set threshold for reset
+        if (ui8_error_cadence_sensor_counter > CADENCE_SENSOR_RESET_COUNTER_THRESHOLD) {
+            // reset cadence sensor error code
+            if (ui8_system_state == ERROR_CADENCE_SENSOR) {
+                ui8_system_state = NO_ERROR;
+				ui8_error_cadence_sensor_counter = 0;
+            }
+		}
+	}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    // check torque sensor
+    if (((ui16_adc_pedal_torque_offset > 300) ||
+		(ui16_adc_pedal_torque_offset < 10) ||
+		(ui16_adc_pedal_torque > 500) ||
+		((ui8_adc_pedal_torque_offset_error)&&(m_configuration_variables.ui8_torque_sensor_adv_enabled)))
+        && ((m_configuration_variables.ui8_riding_mode == POWER_ASSIST_MODE) ||
+			(m_configuration_variables.ui8_riding_mode == TORQUE_ASSIST_MODE)||
+			(m_configuration_variables.ui8_riding_mode == HYBRID_ASSIST_MODE)||
+			(m_configuration_variables.ui8_riding_mode == eMTB_ASSIST_MODE))) {
+        // set torque sensor error code
+        ui8_system_state = ERROR_TORQUE_SENSOR;
+    } else if (ui8_system_state == ERROR_TORQUE_SENSOR) {
+        // reset error code
+        ui8_system_state = NO_ERROR;
+    }
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//#define MOTOR_BLOCKED_COUNTER_THRESHOLD               8  // 8 * 25ms = 0.2 second
 //#define MOTOR_BLOCKED_BATTERY_CURRENT_THRESHOLD_X10   30 // 30 = 3.0 amps
 //#define MOTOR_BLOCKED_ERPS_THRESHOLD                  20 // 20 ERPS
 #define MOTOR_BLOCKED_RESET_COUNTER_THRESHOLD         	250  // 250 * 25ms = 6.25 seconds
@@ -1532,69 +1626,6 @@ static void check_system()
             ui8_motor_blocked_counter = 0;
         }
     }
-
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-    // check torque sensor
-    if (((ui16_adc_pedal_torque_offset > 250) ||
-		(ui16_adc_pedal_torque_offset < 10) ||
-		(ui16_adc_pedal_torque > 500) ||
-		((ui8_adc_pedal_torque_offset_error)&&(m_configuration_variables.ui8_torque_sensor_adv_enabled)))
-        && ((m_configuration_variables.ui8_riding_mode == POWER_ASSIST_MODE) ||
-			(m_configuration_variables.ui8_riding_mode == TORQUE_ASSIST_MODE)||
-			(m_configuration_variables.ui8_riding_mode == HYBRID_ASSIST_MODE)||
-			(m_configuration_variables.ui8_riding_mode == eMTB_ASSIST_MODE))) {
-        // set error code
-        ui8_system_state = ERROR_TORQUE_SENSOR;
-    } else if (ui8_system_state == ERROR_TORQUE_SENSOR) {
-        // reset error code
-        ui8_system_state = NO_ERROR;
-    }
-
-	////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-	  
-#define CHECK_CADENCE_SENSOR_COUNTER_THRESHOLD          250 // 250 * 25ms = 6.25 seconds
-#define ADC_TORQUE_SENSOR_DELTA_THRESHOLD				60	  					
-	static uint8_t ui8_check_cadence_sensor_counter;
-	
-	// check cadence sensor
-	if((ui16_adc_pedal_torque_delta > ADC_TORQUE_SENSOR_DELTA_THRESHOLD)&&(!ui8_pedal_cadence_RPM))
-	   ui8_check_cadence_sensor_counter++;
-	else
-		ui8_check_cadence_sensor_counter = 0;
-	
-	if(ui8_check_cadence_sensor_counter > CHECK_CADENCE_SENSOR_COUNTER_THRESHOLD)
-	{
-		// set error code
-		ui8_system_state = ERROR_CADENCE_SENSOR;
-		ui8_check_cadence_sensor_counter--;
-	}
-	else if (ui8_system_state == ERROR_CADENCE_SENSOR)
-	{
-		// reset error code
-		ui8_system_state = NO_ERROR;
-	}
-	
-	////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-	  
-#define CHECK_SPEED_SENSOR_COUNTER_THRESHOLD          250 // 250 * 25ms = 6.25 seconds
-	static uint8_t ui8_check_speed_sensor_counter;
-	  
-	// check speed sensor
-	if(ui8_pedal_cadence_RPM) { ui8_check_speed_sensor_counter++; }
-	if(ui16_wheel_speed_x10) { ui8_check_speed_sensor_counter = 0; }
-	  
-	if(ui8_check_speed_sensor_counter > CHECK_SPEED_SENSOR_COUNTER_THRESHOLD)
-	{
-		// set error code
-		ui8_system_state = ERROR_SPEED_SENSOR;
-		ui8_check_speed_sensor_counter--;
-	}
-	else if (ui8_system_state == ERROR_SPEED_SENSOR)
-	{
-		// reset error code
-		ui8_system_state = NO_ERROR;
-	}
 }
 
 
@@ -1840,7 +1871,7 @@ void UART2_IRQHandler(void) __interrupt(UART2_IRQHANDLER)
 				ui8_rx_counter++;
 
 				// see if is the last byte of the package
-				if(ui8_rx_counter > UART_RX_BUFFER_LEN)
+				if(ui8_rx_counter >= UART_RX_BUFFER_LEN)
 				{
 				ui8_rx_counter = 0;
 				ui8_state_machine = 0;
@@ -1851,16 +1882,21 @@ void UART2_IRQHandler(void) __interrupt(UART2_IRQHANDLER)
 
 			default:
 			break;
+	
 		}
 	}
 }
 
+static uint8_t no_rx_counter = 0;
 
 static void uart_receive_package(void)
 {
 	uint8_t ui8_rx_check_code;
 	uint8_t ui8_assist_level_mask;
-
+	
+	// increment the safety counter
+    no_rx_counter++;
+	
 	// increment walk assist counter
 	ui8_walk_assist_counter++;
 		
@@ -1877,6 +1913,7 @@ static void uart_receive_package(void)
 	{
 		// verify check code of the package
 		ui8_rx_check_code = 0x00;
+							 
 		for(ui8_i = 0; ui8_i < RX_CHECK_CODE; ui8_i++)
 		{
 			ui8_rx_check_code += ui8_rx_buffer[ui8_i];
@@ -1885,6 +1922,9 @@ static void uart_receive_package(void)
 		// see if check code is ok...
 		if(ui8_rx_check_code == ui8_rx_buffer[RX_CHECK_CODE])
 		{
+			// Reset the safety counter when a valid message from the LCD is received
+            no_rx_counter = 0;
+			
 			// display ready
 			ui8_display_ready_flag = 1;
 			
@@ -1971,15 +2011,7 @@ static void uart_receive_package(void)
 											ui8_display_function_status[2][ECO] = m_configuration_variables.ui8_torque_sensor_adv_enabled;
 										
 											// set pedal torque offset
-											if((m_configuration_variables.ui8_torque_sensor_adv_enabled)&&
-											(ui8_torque_sensor_calibrated)&&(!ui8_adc_pedal_torque_offset_error)) {
-												ui16_adc_pedal_torque_offset = ui16_adc_pedal_torque_offset_fix;
-												ui8_adc_coaster_brake_threshold = ui8_adc_coaster_brake_threshold_fix;
-											}
-											else {
-												ui16_adc_pedal_torque_offset = ui16_adc_pedal_torque_offset_init;
-													ui8_adc_coaster_brake_threshold = ui8_adc_coaster_brake_threshold_init;
-										}
+											calc_pedal_torque_offset();
 			
 											// set display torque sensor value for calibration
 											ui8_display_torque_sensor_value = 1;
@@ -1995,11 +2027,13 @@ static void uart_receive_package(void)
 								{
 									case 2:
 										if(ui8_lights_configuration_2 == 9)
+										{
 											// restore previous lights configuration
 											m_configuration_variables.ui8_lights_configuration = ui8_lights_configuration_temp;
 											ui8_display_lights_configuration = m_configuration_variables.ui8_lights_configuration;
 											// display status
 											ui8_display_alternative_lights_configuration = 1;
+										}
 										break;
 									case 3:
 										if(ui8_lights_configuration_2 == 9)
@@ -2007,16 +2041,19 @@ static void uart_receive_package(void)
 											// restore previous assist without pedal rotation
 											m_configuration_variables.ui8_assist_without_pedal_rotation_enabled = ui8_assist_without_pedal_rotation_temp;
 											ui8_display_function_status[1][TURBO] = m_configuration_variables.ui8_assist_without_pedal_rotation_enabled;
-											// display status
-											ui8_display_alternative_lights_configuration = 1;
 										}
-										
-										if(ui8_lights_configuration_3 == 10)
+										else
+										{	
 											// restore previous lights configuration
 											m_configuration_variables.ui8_lights_configuration = ui8_lights_configuration_temp;
 											ui8_display_lights_configuration = m_configuration_variables.ui8_lights_configuration;
+										}
+										
+										if(ui8_lights_configuration_3 == 10)
+										{
 											// display status
 											ui8_display_alternative_lights_configuration = 1;
+										}
 										break;
 								}							
 								break;
@@ -2189,15 +2226,7 @@ static void uart_receive_package(void)
 										ui8_display_function_status[2][ECO] = m_configuration_variables.ui8_torque_sensor_adv_enabled;
 										
 										// set pedal torque offset
-										if((m_configuration_variables.ui8_torque_sensor_adv_enabled)&&
-										  (ui8_torque_sensor_calibrated)&&(!ui8_adc_pedal_torque_offset_error)) {
-											ui16_adc_pedal_torque_offset = ui16_adc_pedal_torque_offset_fix;
-											ui8_adc_coaster_brake_threshold = ui8_adc_coaster_brake_threshold_fix;
-										}
-										else {
-											ui16_adc_pedal_torque_offset = ui16_adc_pedal_torque_offset_init;
-											ui8_adc_coaster_brake_threshold = ui8_adc_coaster_brake_threshold_init;
-										}
+										calc_pedal_torque_offset();
 										
 										// set display torque sensor flag 1 for value calibration
 										ui8_display_torque_sensor_flag_1 = 1;
@@ -2287,9 +2316,9 @@ static void uart_receive_package(void)
 								case 3:
 									if(ui8_lights_configuration_3 == 10)
 									{
-										// change odometer compensation
-										m_configuration_variables.ui8_enable_odometer_compensation = !m_configuration_variables.ui8_enable_odometer_compensation;
-										ui8_display_function_status[2][TURBO] = m_configuration_variables.ui8_enable_odometer_compensation;
+										// change system error enabled
+										m_configuration_variables.ui8_assist_whit_error_enabled = !m_configuration_variables.ui8_assist_whit_error_enabled;
+										ui8_display_function_status[2][TURBO] = m_configuration_variables.ui8_assist_whit_error_enabled;
 										// display status
 										ui8_display_alternative_lights_configuration = 1;
 									}
@@ -2339,47 +2368,47 @@ static void uart_receive_package(void)
 			// special riding modes with walk assist button
 			switch(m_configuration_variables.ui8_riding_mode)
 			{	
-			case TORQUE_SENSOR_CALIBRATION_MODE:
-				#if ENABLE_XH18 || ENABLE_VLCD5
-				if (((ui8_assist_level != OFF)&&(ui8_assist_level != ECO))||(ui8_menu_counter >= ui8_delay_display_function))
-				#else // ENABLE VLCD6
-				if ((ui8_assist_level != ECO)||(ui8_menu_counter >= ui8_delay_display_function))
-				#endif
-				{	
-					// riding mode recovery at level change
-					m_configuration_variables.ui8_riding_mode = ui8_riding_mode_temp;
-					// clear torque sensor calibration flag
-					ui8_torque_sensor_calibration_flag = 0;
-					// display data function disabled
-					ui8_display_data_enabled = 0;
-					// clear menu counter
-					ui8_menu_counter = ui8_delay_display_function;
-				}
-				else
-				{
-					if(!ui8_torque_sensor_calibration_flag)
-					{
-						// set torque sensor calibration flag
-						ui8_torque_sensor_calibration_flag = 1;
-						// restart menu counter
-						ui8_menu_counter = 0;
-					}
-
-					// walk assist button pressed
-					if((ui8_rx_buffer[1] & 0x20)&&(ui8_display_ready_flag))
-						ui8_torque_sensor_calibration_started = 1;
-					else
-						ui8_torque_sensor_calibration_started = 0;
-
-					// display data function enabled
-					//ui8_display_data_enabled = 1;
-						
-					#if !ENABLE_XH18
-					// display function code disabled
-					ui8_display_function_code = NO_FUNCTION;
+				case TORQUE_SENSOR_CALIBRATION_MODE:
+					#if ENABLE_XH18 || ENABLE_VLCD5
+					if (((ui8_assist_level != OFF)&&(ui8_assist_level != ECO))||(ui8_menu_counter >= ui8_delay_display_function))
+					#else // ENABLE VLCD6
+					if ((ui8_assist_level != ECO)||(ui8_menu_counter >= ui8_delay_display_function))
 					#endif
-				}
-				break;
+					{	
+						// riding mode recovery at level change
+						m_configuration_variables.ui8_riding_mode = ui8_riding_mode_temp;
+						// clear torque sensor calibration flag
+						ui8_torque_sensor_calibration_flag = 0;
+						// display data function disabled
+						ui8_display_data_enabled = 0;
+						// clear menu counter
+						ui8_menu_counter = ui8_delay_display_function;
+					}
+					else
+					{
+						if(!ui8_torque_sensor_calibration_flag)
+						{
+							// set torque sensor calibration flag
+							ui8_torque_sensor_calibration_flag = 1;
+							// restart menu counter
+							ui8_menu_counter = 0;
+						}
+
+						// walk assist button pressed
+						if((ui8_rx_buffer[1] & 0x20)&&(ui8_display_ready_flag))
+							ui8_torque_sensor_calibration_started = 1;
+						else
+							ui8_torque_sensor_calibration_started = 0;
+
+						// display data function enabled
+						//ui8_display_data_enabled = 1;
+						
+						#if !ENABLE_XH18
+						// display function code disabled
+						ui8_display_function_code = NO_FUNCTION;
+						#endif
+					}
+					break;
 					
 				case CRUISE_MODE:
 					// walk assist button pressed
@@ -2460,7 +2489,7 @@ static void uart_receive_package(void)
 			// set assist parameter
 			ui8_riding_mode_parameter = ui8_riding_mode_parameter_array[m_configuration_variables.ui8_riding_mode - 1][ui8_assist_level];
 			
-			// automatic data display after 5s from lights on
+			// automatic data display at lights on
 			if(m_configuration_variables.ui8_auto_display_data_enabled)
 			{	
 				if((ui8_lights_flag)&&(!ui8_menu_index)&&(!ui8_display_battery_soc)&&(!ui8_display_torque_sensor_value)&&(!ui8_display_torque_sensor_step))
@@ -2469,6 +2498,7 @@ static void uart_receive_package(void)
 					{	
 						// set auto display data flag
 						ui8_auto_display_data_flag = 1;
+						ui8_auto_display_data_status = 1;
 						// display data function enabled
 						ui8_display_data_enabled = 1;
 						// restart menu counter
@@ -2503,6 +2533,10 @@ static void uart_receive_package(void)
 								ui8_delay_display_function  = DELAY_MENU_ON;
 						}
 					}
+					else if(ui8_menu_counter >= ui8_delay_display_function)
+					{
+						ui8_auto_display_data_status = 0;
+					}
 				}
 				else
 				{
@@ -2510,6 +2544,7 @@ static void uart_receive_package(void)
 					{
 						// reset auto display data flag
 						ui8_auto_display_data_flag = 0;
+						ui8_auto_display_data_status = 0;
 						// display data function disabled
 						ui8_display_data_enabled = 0;
 					}
@@ -2600,9 +2635,11 @@ static void uart_receive_package(void)
 			}
 			
 			// calculate max battery current in ADC steps from the received battery current limit
-			uint8_t ui8_adc_battery_current_max_temp_1 = ((uint16_t) m_configuration_variables.ui8_battery_current_max * 100) / BATTERY_CURRENT_PER_10_BIT_ADC_STEP_X100;
+			uint8_t ui8_adc_battery_current_max_temp_1 = (uint16_t)(m_configuration_variables.ui8_battery_current_max * (uint8_t)100)
+                        / (uint16_t)BATTERY_CURRENT_PER_10_BIT_ADC_STEP_X100;
 			// calculate max battery current in ADC steps from the received power limit
-			uint32_t ui32_battery_current_max_x100 = ((uint32_t) ui8_target_battery_max_power_div25 * 2500000) / ui16_battery_voltage_filtered_x1000;
+			uint32_t ui32_battery_current_max_x100 = ((uint32_t) ui8_target_battery_max_power_div25 * 2500000)
+						/ ui16_battery_voltage_filtered_x1000;
 			uint8_t ui8_adc_battery_current_max_temp_2 = ui32_battery_current_max_x100 / BATTERY_CURRENT_PER_10_BIT_ADC_STEP_X100;  
 			// set max battery current
 			ui8_adc_battery_current_max = ui8_min(ui8_adc_battery_current_max_temp_1, ui8_adc_battery_current_max_temp_2);
@@ -2610,6 +2647,10 @@ static void uart_receive_package(void)
 		
 		// signal that we processed the full package
 		ui8_received_package_flag = 0;
+		
+		// assist level = OFF if connection with the LCD is lost for more than 0,6 sec (safety)
+		if (no_rx_counter > 5)
+			ui8_assist_level = OFF;
 		
 		// enable UART2 receive interrupt as we are now ready to receive a new package
 		UART2->CR2 |= (1 << 5);
@@ -2734,7 +2775,7 @@ static void uart_send_package(void)
 			if((ui8_system_state != NO_ERROR)&&(ui8_display_fault_code == NO_FAULT))
 				ui8_display_fault_code = ui8_system_state;
 		}
-		
+
 		// transmit to display function code or fault code
 		if((ui8_display_fault_code != NO_FAULT)&&(ui8_display_function_code == NO_FUNCTION))
 		{
@@ -2745,7 +2786,7 @@ static void uart_send_package(void)
 				if(ui8_display_blinking_code)
 					ui8_tx_buffer[5] = 8;
 			}
-			else if (ui8_display_fault_code == ERROR_SPEED_SENSOR)
+			else if (ui8_display_fault_code == ERROR_OVERVOLTAGE)
 			{	
 				// instead of E01, display blinking E06
 				if(ui8_display_blinking_code)
@@ -2757,8 +2798,12 @@ static void uart_send_package(void)
 				ui8_tx_buffer[5] = ui8_display_fault_code;
 			}
 			#else // ENABLE VLCD5/6
-			// fault code
-			ui8_tx_buffer[5] = ui8_display_fault_code;
+			if(ui8_auto_display_data_status)
+				// display data
+				ui8_tx_buffer[5] = CLEAR_DISPLAY;
+			else
+				// fault code
+				ui8_tx_buffer[5] = ui8_display_fault_code;
 			#endif
 		}
 		else if(ui8_display_function_code != NO_FUNCTION)
@@ -2807,7 +2852,7 @@ static void uart_send_package(void)
 			
 			ui16_data_value_array[8] = (uint16_t) ui16_display_data_factor / (ui16_human_power_x10 / 10);
 			ui16_data_value_array[9] = (uint16_t) ui16_display_data_factor / ui16_adc_pedal_torque_delta;
-			ui16_data_value_array[10] = (uint16_t) ui16_display_data_factor / ui16_adc_pedal_torque_delta_boost;
+			ui16_data_value_array[10] = (uint16_t) ui16_display_data_factor / (ui32_wh_x10 / 10);
 			ui16_data_value_array[11] = (uint16_t) ui16_display_data_factor / (ui16_pedal_weight_x100 / 10);
 			ui16_data_value_array[12] = (uint16_t) ui16_display_data_factor / (m_configuration_variables.ui8_pedal_torque_per_10_bit_ADC_step_x100 * 10);
 			ui16_data_value_array[13] = (uint16_t) ui16_display_data_factor / FUNCTION_STATUS_OFF;
@@ -2836,8 +2881,7 @@ static void uart_send_package(void)
 				ui16_display_data = ui16_data_value_array[ui8_data_index_array[ui8_data_index]];
 
 			// valid value
-			if(ui16_display_data != 0)
-				
+			if(ui16_display_data)
 			{
 				ui8_tx_buffer[6] = (uint8_t) (ui16_display_data & 0xFF);
 				ui8_tx_buffer[7] = (uint8_t) (ui16_display_data >> 8);
@@ -2850,35 +2894,42 @@ static void uart_send_package(void)
 		}
 		else
 		{	
-
 			// wheel speed
-			if(ui16_oem_wheel_speed == 0)
-			{
-				ui8_tx_buffer[6] = 0x07;
-				ui8_tx_buffer[7] = 0x07;
-
-				#if ENABLE_DISPLAY_WORKING_FLAG
-				// bit7 = 0 (wheel not turning)
-				ui8_working_status &= 0x7F;
-				#endif
-			}
-			else
+			if(ui16_oem_wheel_speed)
 			{
 				ui8_tx_buffer[6] = (uint8_t) (ui16_oem_wheel_speed & 0xFF);
 				ui8_tx_buffer[7] = (uint8_t) (ui16_oem_wheel_speed >> 8);
-					
-				#if ENABLE_DISPLAY_WORKING_FLAG
-				// bit7 = 1 (wheel turning)
-				ui8_working_status |= 0x80;
-				#endif
+			}
+			else
+			{
+				ui8_tx_buffer[6] = 0x07;
+				ui8_tx_buffer[7] = 0x07;
 			}
 		}
-		
+				
 		// set working flag
 		#if ENABLE_DISPLAY_ALWAYS_ON
 		// set working flag used to hold display always on
 		ui8_working_status |= 0x04;
-		#else
+		#endif
+		
+		#if ENABLE_DISPLAY_WORKING_FLAG
+		// wheel turning
+		if(ui16_oem_wheel_speed)
+			// bit7 = 1 (wheel turning)
+			ui8_working_status |= 0x80;
+		else
+			// bit7 = 0 (wheel not turning)
+				ui8_working_status &= 0x7F;
+		
+		// motor working
+		if (ui8_g_duty_cycle > 10)
+			// bit6 = 1 (motor working)
+			ui8_working_status |= 0x40;
+		else
+			// bit6 = 0 (motor not working)
+			ui8_working_status &= 0xBF;
+		
 		// motor working or wheel turning?
 		if(ui8_working_status & 0xC0)
 		{
@@ -2917,32 +2968,6 @@ static void uart_send_package(void)
 	
 static void calc_oem_wheel_speed(void)
 { 
-	// display ready
-/*
-	if(ui8_display_ready_flag)
-	{
-		float f_oem_wheel_speed;
-		float f_oem_wheel_perimeter;
-			
-		// calc oem wheel speed (wheel turning time)
-		if(ui16_wheel_speed_sensor_ticks)
-		{
-			f_oem_wheel_speed = (((float) ui16_wheel_speed_sensor_ticks) * 10.0) / ((float) OEM_WHEEL_SPEED_DIVISOR);
-				
-			// speed conversion for different perimeter			
-			f_oem_wheel_perimeter = ((float) ui8_oem_wheel_diameter * 25.4 * 3.14159);
-			f_oem_wheel_speed *= f_oem_wheel_perimeter;
-			f_oem_wheel_speed /= (float) m_configuration_variables.ui16_wheel_perimeter;
-				
-			// oem wheel speed (wheel turning time)
-			ui16_oem_wheel_speed = (uint16_t) f_oem_wheel_speed;
-		}
-		else
-		{
-			ui16_oem_wheel_speed = 0;
-		}
-	}
-*/
 	if(ui8_display_ready_flag)
 	{
 		uint32_t ui32_oem_wheel_speed;
@@ -2952,7 +2977,7 @@ static void calc_oem_wheel_speed(void)
 		if(ui16_wheel_speed_sensor_ticks)
 		{
 			ui32_oem_wheel_speed = ((uint32_t) ui16_wheel_speed_sensor_ticks * 10) / OEM_WHEEL_SPEED_DIVISOR;
-				
+			
 			// speed conversion for different perimeter			
 			ui32_oem_wheel_perimeter = ((uint32_t) ui8_oem_wheel_diameter * 7975) / 100; // 25.4 * 3.14 * 100 = 7975
 			ui32_oem_wheel_speed *= ui32_oem_wheel_perimeter;
@@ -2967,59 +2992,57 @@ static void calc_oem_wheel_speed(void)
 		}
 	}
 	
-	if(m_configuration_variables.ui8_enable_odometer_compensation)
-	{
-		uint16_t ui16_wheel_speed;
-		uint16_t ui16_data_speed;
-		uint16_t ui16_speed_difference;
-	
-		// calc wheel speed  mm/0.1 sec
-		if(ui16_oem_wheel_speed)
-			ui16_wheel_speed = (uint16_t)((ui16_display_data_factor / ui16_oem_wheel_speed) * ((uint16_t) 100 / 36));
-		else
-			ui16_wheel_speed = 0;
-	
-		// calc data speed  mm/0.1 sec
-		if(ui16_display_data)	
-			ui16_data_speed = (uint16_t)((ui16_display_data_factor / ui16_display_data) * ((uint16_t) 100 / 36));
-		else
-			ui16_data_speed = 0;
-		
-		// calc odometer difference
-		if(ui8_display_data_enabled)
-		{	
-			if(ui16_data_speed > ui16_wheel_speed)
-			{	
-				// calc + speed difference mm/0.1 sec
-				ui16_speed_difference = ui16_data_speed - ui16_wheel_speed;
-				// add difference to odometer
-				ui32_odometer_compensation_mm += (uint32_t) ui16_speed_difference;
-			}
-			else
-			{	
-				// calc - speed difference mm/0.1 sec
-				ui16_speed_difference = ui16_wheel_speed - ui16_data_speed;
+	#if ENABLE_ODOMETER_COMPENSATION
+	uint16_t ui16_wheel_speed;
+	uint16_t ui16_data_speed;
+	uint16_t ui16_speed_difference;
 
-				// subtracts difference from odometer
-				ui32_odometer_compensation_mm -= (uint32_t) ui16_speed_difference;
-			}
+	// calc wheel speed  mm/0.1 sec
+	if(ui16_oem_wheel_speed)
+		ui16_wheel_speed = (uint16_t)((ui16_display_data_factor / ui16_oem_wheel_speed) * ((uint16_t) 100 / 36));
+	else
+		ui16_wheel_speed = 0;
+
+	// calc data speed  mm/0.1 sec
+	if(ui16_display_data)	
+		ui16_data_speed = (uint16_t)((ui16_display_data_factor / ui16_display_data) * ((uint16_t) 100 / 36));
+	else
+		ui16_data_speed = 0;
+	
+	// calc odometer difference
+	if(ui8_display_data_enabled)
+	{	
+		if(ui16_data_speed > ui16_wheel_speed)
+		{	
+			// calc + speed difference mm/0.1 sec
+			ui16_speed_difference = ui16_data_speed - ui16_wheel_speed;
+			// add difference to odometer
+			ui32_odometer_compensation_mm += (uint32_t) ui16_speed_difference;
 		}
 		else
 		{	
-			// odometer compensation
-			if((ui16_wheel_speed)&&(ui32_odometer_compensation_mm > ZERO_ODOMETER_COMPENSATION))
-			{
-				ui32_odometer_compensation_mm -= (uint32_t) ui16_wheel_speed;
-				ui16_oem_wheel_speed = 0;
-			}
+			// calc - speed difference mm/0.1 sec
+			ui16_speed_difference = ui16_wheel_speed - ui16_data_speed;
+				// subtracts difference from odometer
+			ui32_odometer_compensation_mm -= (uint32_t) ui16_speed_difference;
 		}
 	}
+	else
+	{	
+		// odometer compensation
+		if((ui16_wheel_speed)&&(ui32_odometer_compensation_mm > ZERO_ODOMETER_COMPENSATION))
+		{
+			ui32_odometer_compensation_mm -= (uint32_t) ui16_wheel_speed;
+			ui16_oem_wheel_speed = 0;
+		}
+	}
+	#endif
 } 
 
 
 static void check_battery_soc(void)
 {
-	static uint8_t ui8_no_load_counter;
+	static uint8_t ui8_no_load_counter = 20;
 	uint16_t ui16_battery_voltage_x10;
 	uint16_t ui16_battery_SOC_used_x10;
 	uint16_t ui16_battery_power_x10;
@@ -3031,7 +3054,7 @@ static void check_battery_soc(void)
 	ui16_battery_voltage_filtered_x10 = filter(ui16_battery_voltage_x10, ui16_battery_voltage_filtered_x10, 2);
 
 	// save no load voltage x10 if current is < adc current min for 2 seconds
-	if(ui8_adc_battery_current_filtered < (ADC_10_BIT_BATTERY_CURRENT_MIN + 2)) {
+	if(ui8_adc_battery_current_filtered < (ui8_adc_battery_current_min + 2)) {
 		if(++ui8_no_load_counter > 20) {
 			ui16_battery_no_load_voltage_filtered_x10 = ui16_battery_voltage_x10;
 			ui8_no_load_counter--;
@@ -3077,7 +3100,7 @@ static void check_battery_soc(void)
 	// consumed watt-hours
 	ui32_wh_sum_x10 += ui16_battery_power_x10;
 	// calculate watt-hours X10 since power on
-	ui32_wh_since_power_on_x10 = ui32_wh_sum_x10 / 32760; // 36000 -9% for calibration
+	ui32_wh_since_power_on_x10 = ui32_wh_sum_x10 / 32400; // 36000 -10% for calibration
 	// calculate watt-hours X10 since last full charge
 	ui32_wh_x10 = ui32_wh_x10_offset + ui32_wh_since_power_on_x10;
 	// calculate percentage battery capacity used x10
@@ -3155,7 +3178,7 @@ uint16_t calc_battery_soc_x10(uint16_t ui16_battery_soc_offset_x10, uint16_t ui1
 {
 	uint16_t ui16_cell_voltage_soc_x100 = ui16_battery_voltage_soc_filtered_x10 * 10 / BATTERY_CELLS_NUMBER;
 	
-	uint16_t ui16_battery_soc_calc_temp_x10 = (ui16_battery_soc_offset_x10 + (ui16_battery_soc_step_x10 * (ui16_cell_voltage_soc_x100 - ui16_cell_volts_min_x100) / (ui16_cell_volts_max_x100 - ui16_cell_volts_min_x100))) - 50;
+	uint16_t ui16_battery_soc_calc_temp_x10 = (ui16_battery_soc_offset_x10 + (ui16_battery_soc_step_x10 * (ui16_cell_voltage_soc_x100 - ui16_cell_volts_min_x100) / (ui16_cell_volts_max_x100 - ui16_cell_volts_min_x100))) - 60;
 	
 	return ui16_battery_soc_calc_temp_x10;
 }

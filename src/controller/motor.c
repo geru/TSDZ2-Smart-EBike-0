@@ -359,14 +359,6 @@ void motor_controller(void) {
 // Hall sensor B positivie to negative transition | BEMF phase A at max value / top of sinewave
 // Hall sensor C positive to negative transition | BEMF phase C at max value / top of sinewave
 
-#ifdef PWM_TIME_DEBUG
-volatile uint16_t ui16_pwm_cnt_down_irq;
-volatile uint16_t ui16_pwm_cnt_up_irq;
-#endif
-
-#ifdef MAIN_TIME_DEBUG
-extern volatile uint8_t ui8_main_time;
-#endif
 
 // PWM cycle interrupt
 // TIM1 is center aligned and every cycle counts up from 0 to 400 and then down from 400 to 0 (25+25us = 50us total time)
@@ -388,11 +380,11 @@ void TIM1_CAP_COM_IRQHandler(void) __interrupt(TIM1_CAP_COM_IRQHANDLER)
     p_configuration_variables = get_configuration_variables();
 	
 	// save percentage remaining battery capacity at shutdown
- 	if(UI8_ADC_BATTERY_VOLTAGE < BATTERY_VOLTAGE_SHUTDOWN_8_BIT)
+	if(UI8_ADC_BATTERY_VOLTAGE < BATTERY_VOLTAGE_SHUTDOWN_8_BIT)
 	{
 		if((!ui8_battery_SOC_saved_flag)&&(ui8_battery_SOC_reset_flag))
 		{
-			disableInterrupts();
+			//disableInterrupts();
 			
 			// unlock memory
 			FLASH_Unlock(FLASH_MEMTYPE_DATA);
@@ -402,12 +394,14 @@ void TIM1_CAP_COM_IRQHandler(void) __interrupt(TIM1_CAP_COM_IRQHANDLER)
 
 			// write percentage remaining battery capacity x10 8bit to EEPROM
 			FLASH_ProgramByte(ADDRESS_BATTERY_SOC, p_configuration_variables->ui8_battery_SOC_percentage_8b);
-                     
+            
 			// wait until end of programming (write or erase operation) flag is set
 			while (FLASH_GetFlagStatus(FLASH_FLAG_EOP) == RESET) {}
 
 			// lock memory
 			FLASH_Lock(FLASH_MEMTYPE_DATA);
+			
+			//enableInterrupts();
 			
 			// battery SOC saved
 			ui8_battery_SOC_saved_flag = 1;
@@ -606,7 +600,8 @@ void TIM1_CAP_COM_IRQHandler(void) __interrupt(TIM1_CAP_COM_IRQHANDLER)
                 || (ui16_PWM_cycles_counter_total < (DOUBLE_PWM_CYCLES_SECOND / MOTOR_OVER_SPEED_ERPS))
                 || (UI8_ADC_BATTERY_VOLTAGE < ui8_adc_battery_voltage_cut_off)
                 || (ui8_fw_angle > ui8_fw_angle_max)
-                || (ui8_brake_state)) {
+                || (ui8_brake_state)
+				|| (!ui8_assist_level)) {
             // reset duty cycle ramp up counter (filter)
             ui8_counter_duty_cycle_ramp_up = 0;
 
@@ -707,18 +702,6 @@ void TIM1_CAP_COM_IRQHandler(void) __interrupt(TIM1_CAP_COM_IRQHANDLER)
         // phase A
         TIM1->CCR1H = (uint8_t) (ui8_phase_a_voltage >> 7);
         TIM1->CCR1L = (uint8_t) (ui8_phase_a_voltage << 1);
-
-        #ifdef PWM_TIME_DEBUG
-            #ifndef __CDT_PARSER__ // avoid Eclipse syntax check
-            __asm
-                ld  a, 0x5250
-                and a, #0x10 // counter direction end irq
-                or  a, 0x525e // TIM1->CNTRH
-                ld  _ui16_pwm_cnt_down_irq+0, a      // ui16_pwm_cnt_down_irq MSB = TIM1->CNTRH | direction
-                mov _ui16_pwm_cnt_down_irq+1, 0x525f // ui16_pwm_cnt_down_irq LSB = TIM1->CNTRL
-            __endasm;
-            #endif
-        #endif
 
     } else {
         /****************************************************************************/
@@ -860,16 +843,17 @@ void TIM1_CAP_COM_IRQHandler(void) __interrupt(TIM1_CAP_COM_IRQHANDLER)
 
         // check wheel speed sensor pin state
         uint8_t ui8_wheel_speed_sensor_pin_state = WHEEL_SPEED_SENSOR__PORT->IDR & WHEEL_SPEED_SENSOR__PIN;
-	
+		
 		// check wheel speed sensor ticks counter min value
 		if(ui16_wheel_speed_sensor_ticks) { ui16_wheel_speed_sensor_ticks_counter_min = ui16_wheel_speed_sensor_ticks >> 3; }
 		else { ui16_wheel_speed_sensor_ticks_counter_min = WHEEL_SPEED_SENSOR_TICKS_COUNTER_MIN >> 3; }
 
-		if(!ui8_wheel_speed_sensor_ticks_counter_started || (ui16_wheel_speed_sensor_ticks_counter > ui16_wheel_speed_sensor_ticks_counter_min)) {  
+		if(!ui8_wheel_speed_sensor_ticks_counter_started ||
+		  (ui16_wheel_speed_sensor_ticks_counter > ui16_wheel_speed_sensor_ticks_counter_min)) {  
 			// check if wheel speed sensor pin state has changed
 			if (ui8_wheel_speed_sensor_pin_state != ui8_wheel_speed_sensor_pin_state_old) {
 				// update old wheel speed sensor pin state
-					ui8_wheel_speed_sensor_pin_state_old = ui8_wheel_speed_sensor_pin_state;
+				ui8_wheel_speed_sensor_pin_state_old = ui8_wheel_speed_sensor_pin_state;
 
 				// only consider the 0 -> 1 transition
 				if (ui8_wheel_speed_sensor_pin_state) {
@@ -892,7 +876,7 @@ void TIM1_CAP_COM_IRQHandler(void) __interrupt(TIM1_CAP_COM_IRQHANDLER)
 				}
 			}
 		}
-	
+		
         // increment and also limit the ticks counter
         if (ui8_wheel_speed_sensor_ticks_counter_started)
             if (ui16_wheel_speed_sensor_ticks_counter < WHEEL_SPEED_SENSOR_TICKS_COUNTER_MIN) {
@@ -903,22 +887,6 @@ void TIM1_CAP_COM_IRQHandler(void) __interrupt(TIM1_CAP_COM_IRQHANDLER)
                 ui16_wheel_speed_sensor_ticks_counter = 0;
                 ui8_wheel_speed_sensor_ticks_counter_started = 0;
             }
-
-        #ifdef MAIN_TIME_DEBUG
-            ui8_main_time++;
-        #endif
-
-        #ifdef PWM_TIME_DEBUG
-            #ifndef __CDT_PARSER__ // avoid Eclipse syntax check
-            __asm
-                ld  a, 0x5250
-                and a, #0x10 // counter direction end irq
-                or  a, 0x525e // TIM1->CNTRH
-                ld  _ui16_pwm_cnt_up_irq+0, a      // ui16_pwm_cnt_up_irq MSB = TIM1->CNTRH | direction
-                mov _ui16_pwm_cnt_up_irq+1, 0x525f // ui16_pwm_cnt_up_irq LSB = TIM1->CNTRL
-            __endasm;
-            #endif
-        #endif
     }
 
     /****************************************************************************/
@@ -978,17 +946,8 @@ void calc_foc_angle(void) {
     if (ui8_g_duty_cycle > 10) {
         ui16_temp = ui8_adc_battery_current_filtered * (uint8_t)BATTERY_CURRENT_PER_10_BIT_ADC_STEP_X512;
         ui16_i_phase_current_x2 = ui16_temp / ui8_g_duty_cycle;
-		
-		#if ENABLE_DISPLAY_WORKING_FLAG
-			ui8_working_status |= 0x40; // bit6 = 1 (motor working)
-		#endif
     } else {
         ui8_g_foc_angle = 0;
-		
-		#if ENABLE_DISPLAY_WORKING_FLAG
-			ui8_working_status &= 0xBF; // bit6 = 0 (motor not working)
-		#endif
-		
         goto skip_foc;
     }
 
@@ -1023,6 +982,11 @@ void calc_foc_angle(void) {
 
     // calc FOC angle
     ui8_g_foc_angle = asin_table(ui16_iwl_128 / ui16_e_phase_voltage);
+	
+	uint8_t ui8_tmp = ui8_adc_battery_current_filtered / (uint8_t)13U;
+	if (ui8_tmp > 5)
+		ui8_tmp = 5;
+	ui8_g_foc_angle += ui8_tmp;
 
     skip_foc:
     // low pass filter FOC angle
