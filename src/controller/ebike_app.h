@@ -20,7 +20,7 @@ extern volatile uint8_t ui8_assist_level;
 extern uint16_t ui16_cadence_sensor_ticks_counter_min_speed_adjusted;
 
 // Torque sensor coaster brake engaged threshold value
-extern uint8_t ui8_adc_coaster_brake_threshold;
+extern volatile uint16_t ui16_adc_coaster_brake_threshold;
 
 typedef struct _configuration_variables
 {

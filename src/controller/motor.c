@@ -572,7 +572,7 @@ void TIM1_CAP_COM_IRQHandler(void) __interrupt(TIM1_CAP_COM_IRQHANDLER)
 
 		#if COASTER_BRAKE_ENABLED
         // check if coaster brake is engaged
-        if (UI8_ADC_TORQUE_SENSOR < ui8_adc_coaster_brake_threshold) {
+        if (UI16_ADC_10_BIT_TORQUE_SENSOR < ui16_adc_coaster_brake_threshold) {
             // set brake state
             ui8_brake_state = 1;
         } else {
