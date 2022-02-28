@@ -124,6 +124,7 @@ volatile uint16_t ui16_adc_pedal_torque_offset_cal = PEDAL_TORQUE_ADC_OFFSET;
 volatile uint16_t ui16_adc_coaster_brake_threshold = 0;
 static uint16_t ui16_adc_pedal_torque = 0;
 static uint16_t ui16_adc_pedal_torque_delta = 0;
+static uint16_t ui16_adc_pedal_torque_delta_temp = 0;
 static uint16_t ui16_adc_pedal_torque_delta_no_boost = 0;
 static uint16_t ui16_pedal_torque_x100 = 0;
 static uint16_t ui16_human_power_x10 = 0;
@@ -1695,7 +1696,7 @@ static void get_pedal_torque(void)
         ui16_temp = ui16_adc_pedal_torque - ui16_adc_pedal_torque_offset_init;
 		
 		// adc pedal torque delta adjustment
-		ui16_adc_pedal_torque_delta = ui16_adc_pedal_torque - ui16_adc_pedal_torque_offset + ADC_TORQUE_SENSOR_MIDDLE_OFFSET_ADJ
+		ui16_adc_pedal_torque_delta = ui16_adc_pedal_torque - ui16_adc_pedal_torque_offset
 			- ((ADC_TORQUE_SENSOR_DELTA_ADJ	* ui16_temp) / ADC_TORQUE_SENSOR_RANGE_TARGET);
 		
 		// adc pedal torque delta remapping
@@ -1715,6 +1716,8 @@ static void get_pedal_torque(void)
 				ui16_adc_pedal_torque_delta = ui16_temp;
 			}
 		}
+		ui16_adc_pedal_torque_delta = (ui16_adc_pedal_torque_delta + ui16_adc_pedal_torque_delta_temp) >> 1;
+		ui16_adc_pedal_torque_delta_temp = ui16_adc_pedal_torque_delta;
 	}
 	else {
 		ui16_adc_pedal_torque_delta = 0;
