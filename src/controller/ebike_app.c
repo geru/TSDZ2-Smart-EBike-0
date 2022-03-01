@@ -1693,16 +1693,15 @@ static void get_pedal_torque(void)
 	
     // calculate the delta value of adc pedal torque and the adc pedal torque range from calibration
     if (ui16_adc_pedal_torque > ui16_adc_pedal_torque_offset) {
-        ui16_temp = ui16_adc_pedal_torque - ui16_adc_pedal_torque_offset_init;
-		
-		// adc pedal torque delta adjustment
-		ui16_adc_pedal_torque_delta = ui16_adc_pedal_torque - ui16_adc_pedal_torque_offset
-			- ((ADC_TORQUE_SENSOR_DELTA_ADJ	* ui16_temp) / ADC_TORQUE_SENSOR_RANGE_TARGET);
-		
-		// adc pedal torque delta remapping
+        // adc pedal torque delta remapping
 		if((ui8_torque_sensor_calibrated)&&(m_configuration_variables.ui8_torque_sensor_adv_enabled)) {
-			ui16_temp = (ui16_adc_pedal_torque_delta * ADC_TORQUE_SENSOR_RANGE_INGREASE_X100) / 10;
+			// adc pedal torque delta adjustment
+			ui16_temp = ui16_adc_pedal_torque - ui16_adc_pedal_torque_offset_init;
+			ui16_adc_pedal_torque_delta = ui16_adc_pedal_torque - ui16_adc_pedal_torque_offset
+				- ((ADC_TORQUE_SENSOR_DELTA_ADJ	* ui16_temp) / ADC_TORQUE_SENSOR_RANGE_TARGET);
 			
+			// adc pedal torque range adjusment
+			ui16_temp = (ui16_adc_pedal_torque_delta * ADC_TORQUE_SENSOR_RANGE_INGREASE_X100) / 10;
 			ui16_adc_pedal_torque_delta = (((ui16_temp
 				* ((ui16_temp / ADC_TORQUE_SENSOR_ANGLE_COEFF + ADC_TORQUE_SENSOR_ANGLE_COEFF_X10) / ADC_TORQUE_SENSOR_ANGLE_COEFF)) / 50) // 100
 				* (100 + PEDAL_TORQUE_ADC_RANGE_ADJ)) / 200; // 100
@@ -1716,11 +1715,15 @@ static void get_pedal_torque(void)
 				ui16_adc_pedal_torque_delta = ui16_temp;
 			}
 		}
+		else {
+			ui16_adc_pedal_torque_delta = ui16_adc_pedal_torque - ui16_adc_pedal_torque_offset;
+		}
 		ui16_adc_pedal_torque_delta = (ui16_adc_pedal_torque_delta + ui16_adc_pedal_torque_delta_temp) >> 1;
 		ui16_adc_pedal_torque_delta_temp = ui16_adc_pedal_torque_delta;
 	}
 	else {
 		ui16_adc_pedal_torque_delta = 0;
+		ui16_adc_pedal_torque_delta_temp = 0;
     }
 	
 	// for startup assist without pedaling in power assist mode
