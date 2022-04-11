@@ -10,15 +10,17 @@ List of changes v20.1C.2
  6 - Added estimated calculation "Pedal torque adc step".
  7 - Added "Startup assist", for starting from a stationary on difficult climbs.
  8 - Added "Walk Assist" speed settings, one for each level.
- 9 - Improved progressivity in "Cadence Assist" mode.
-10 - Added choice of soc % calculation mode.
-11 - Improved the problem of delay in restarting with bike in motion (from mspider65 v12)
-12 - Modified standing start, softer.
-13 - Fixed calculation of human power.
-14 - Fixed, coaster brake feature.
-15 - Display of TE and TE1 torque sensor values (VLCD5 only).
-16 - Changed "dead time" value to 2.0 us.
-17 - Cross-check motor current variables, with assistance stop in the presence of incompatible values (possible cause of motor operation without pedaling).
+ 9 - Added choice Startup boost mode, at zero cadence or at zero speed.
+10 - Improved progressivity in "Cadence Assist" mode.
+11 - Added choice of soc % calculation mode.
+12 - Improved the problem of delay in restarting with bike in motion (from mspider65 v12)
+13 - Modified standing start, softer.
+14 - Fixed an overflow issue in power assist mode.
+15 - Fixed calculation of human power.
+16 - Fixed, coaster brake feature.
+17 - Display of TE and TE1 torque sensor values (VLCD5 only).
+18 - Changed "dead time" value to 2.0 us.
+19 - Cross-check motor current variables, with assistance stop in the presence of incompatible values (possible cause of motor operation without pedaling).
 
 List of changes v20.1C.1
  1 - Torque sensor calibration bug fixed.

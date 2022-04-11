@@ -118,6 +118,7 @@ static uint8_t ui8_motor_deceleration = MOTOR_DECELERATION;
 // torque sensor
 static uint8_t ui8_pedal_torque_per_10_bit_ADC_step_x100 = PEDAL_TORQUE_PER_10_BIT_ADC_STEP_X100;
 static uint8_t ui8_pedal_torque_per_10_bit_ADC_step_calc_x100 = PEDAL_TORQUE_PER_10_BIT_ADC_STEP_CALC_X100;
+static uint8_t ui8_adc_pedal_torque_offset_adj = ADC_TORQUE_SENSOR_OFFSET_ADJ;
 static uint16_t ui16_adc_pedal_torque_offset = PEDAL_TORQUE_ADC_OFFSET;
 static uint16_t ui16_adc_pedal_torque_offset_init = PEDAL_TORQUE_ADC_OFFSET;
 volatile uint16_t ui16_adc_pedal_torque_offset_cal = PEDAL_TORQUE_ADC_OFFSET;
@@ -393,6 +394,8 @@ volatile uint8_t ui8_cruise_counter = 0;
 volatile uint8_t ui8_cruise_button_flag = 0;
 
 // startup boost
+static uint8_t ui8_startup_boost_at_zero = STARTUP_BOOST_AT_ZERO;
+static uint8_t ui8_startup_boost_flag = 0;
 static uint8_t ui8_startup_boost_enabled_temp = STARTUP_BOOST_ON_STARTUP;
 static uint16_t ui16_startup_boost_factor_array[120];
 
@@ -473,6 +476,11 @@ void ebike_app_init(void)
 	// set low voltage cutoff (8 bit)  300>86
 	ui8_adc_battery_voltage_cut_off = ((uint32_t) m_configuration_variables.ui16_battery_low_voltage_cut_off_x10 * 25) / BATTERY_VOLTAGE_PER_10_BIT_ADC_STEP_X1000;
 
+	// disable assist without pedal rotation
+	if(ui8_adc_pedal_torque_offset_adj < 20) {
+		m_configuration_variables.ui8_assist_without_pedal_rotation_enabled = 0;
+	}
+		
 	// check if assist without pedal rotation threshold is valid (safety)
 	if (ui8_assist_without_pedal_rotation_threshold > 100)
 		ui8_assist_without_pedal_rotation_threshold = 100;
@@ -753,11 +761,11 @@ static void apply_power_assist()
      ------------------------------------------------------------------------*/
 
     // calculate target current
-    uint16_t ui16_battery_current_target_x100 = (ui32_power_assist_x100 * 1000) / ui16_battery_voltage_filtered_x1000;
-
+    uint32_t ui32_battery_current_target_x100 = (ui32_power_assist_x100 * 1000) / ui16_battery_voltage_filtered_x1000;
+	
     // set battery current target in ADC steps
-    uint16_t ui16_adc_battery_current_target = ui16_battery_current_target_x100 / BATTERY_CURRENT_PER_10_BIT_ADC_STEP_X100;
-
+    uint16_t ui16_adc_battery_current_target = (uint16_t)ui32_battery_current_target_x100 / BATTERY_CURRENT_PER_10_BIT_ADC_STEP_X100;
+	
     // set motor acceleration
     if (ui16_wheel_speed_x10 >= 200) {
         ui8_duty_cycle_ramp_up_inverse_step = PWM_DUTY_CYCLE_RAMP_UP_INVERSE_STEP_MIN;
@@ -1410,14 +1418,14 @@ static void apply_hybrid_assist()
 	uint8_t ui8_power_assist_multiplier_x50 = ui8_riding_mode_parameter;
 
 	// calculate power assist by multiplying human power with the power assist multiplier
-    uint32_t ui32_power_assist_x100 = (((uint16_t)(ui8_pedal_cadence_RPM * ui8_power_assist_multiplier_x50))
+    uint32_t ui32_power_assist_x100 = (((uint32_t)(ui8_pedal_cadence_RPM * ui8_power_assist_multiplier_x50))
             * ui16_pedal_torque_x100) / 480U; // see note below
-
+	
 	// calculate power assist target current x100
-	uint16_t ui16_battery_current_target_x100 = (ui32_power_assist_x100 * 1000) / ui16_battery_voltage_filtered_x1000;
-		
+	uint32_t ui32_battery_current_target_x100 = (ui32_power_assist_x100 * 1000) / ui16_battery_voltage_filtered_x1000;
+	
 	// calculate power assist target current
-	ui16_adc_battery_current_target_power_assist = ui16_battery_current_target_x100 / BATTERY_CURRENT_PER_10_BIT_ADC_STEP_X100;
+	ui16_adc_battery_current_target_power_assist = (uint16_t)ui32_battery_current_target_x100 / BATTERY_CURRENT_PER_10_BIT_ADC_STEP_X100;
 	
 	// set battery current target in ADC steps
 	if(ui16_adc_battery_current_target_power_assist > ui16_adc_battery_current_target_torque_assist)
@@ -1693,7 +1701,7 @@ static void get_pedal_torque(void)
 	
     // calculate the delta value of adc pedal torque and the adc pedal torque range from calibration
     if (ui16_adc_pedal_torque > ui16_adc_pedal_torque_offset) {
-        // adc pedal torque delta remapping
+		// adc pedal torque delta remapping
 		if((ui8_torque_sensor_calibrated)&&(m_configuration_variables.ui8_torque_sensor_adv_enabled)) {
 			// adc pedal torque delta adjustment
 			ui16_temp = ui16_adc_pedal_torque - ui16_adc_pedal_torque_offset_init;
@@ -1740,11 +1748,25 @@ static void get_pedal_torque(void)
 		ui16_human_power_x10 = (uint16_t)(((uint32_t)ui16_pedal_torque_x100 * ui8_pedal_cadence_RPM) / 96); // see note below
 	}
 	// human power filtered x 10 for display data
-	ui16_human_power_filtered_x10 = filter(ui16_human_power_x10, ui16_human_power_filtered_x10, 4);
+	ui16_human_power_filtered_x10 = filter(ui16_human_power_x10, ui16_human_power_filtered_x10, 8);
 	
+	// startup boost mode
+	switch (ui8_startup_boost_at_zero) {
+		case CADENCE:
+			ui8_startup_boost_flag = 1;
+			break;
+		case SPEED:
+			if(ui16_wheel_speed_x10 == 0) {
+				ui8_startup_boost_flag = 1;
+			}
+			else if(ui8_pedal_cadence_RPM > 45) {
+				ui8_startup_boost_flag = 0;
+			}
+			break;
+	}
 	// pedal torque delta + startup boost in power assist mode
-	if((m_configuration_variables.ui8_startup_boost_enabled)&&
-	  (m_configuration_variables.ui8_riding_mode == POWER_ASSIST_MODE)) {
+	if((m_configuration_variables.ui8_startup_boost_enabled)&&(ui8_startup_boost_flag)
+	  &&(m_configuration_variables.ui8_riding_mode == POWER_ASSIST_MODE)) {
 		// calculate startup boost torque & new pedal torque delta
 		uint32_t ui32_temp = ((uint32_t)(ui16_adc_pedal_torque_delta * ui16_startup_boost_factor_array[ui8_pedal_cadence_RPM])) / 100;
 		ui16_adc_pedal_torque_delta += (uint16_t) ui32_temp;
@@ -2740,8 +2762,8 @@ static void uart_receive_package(void)
 					else
 					{
 						#if WALK_ASSIST_DEBOUNCE_ENABLED && ENABLE_BRAKE_SENSOR
-						if(ui8_walk_assist_counter < WALK_ASSIST_DEBOUNCE_TIME) &&
-						  (ui16_wheel_speed_x10 < WALK_ASSIST_THRESHOLD_SPEED_X10)
+						if((ui8_walk_assist_counter < WALK_ASSIST_DEBOUNCE_TIME) &&
+						  (ui16_wheel_speed_x10 < WALK_ASSIST_THRESHOLD_SPEED_X10))
 						{
 							// stop walk assist during debounce time
 							#if ENABLE_XH18
@@ -3425,7 +3447,7 @@ static void check_battery_soc(void)
 	// battery power x 10
 	ui16_battery_power_x10 = (uint16_t)(((uint32_t) ui16_battery_voltage_filtered_x10 * ui8_battery_current_filtered_x10) / 10);
 	// battery power filtered x 10 for display data
-	ui16_battery_power_filtered_x10 = filter(ui16_battery_power_x10, ui16_battery_power_filtered_x10, 4);
+	ui16_battery_power_filtered_x10 = filter(ui16_battery_power_x10, ui16_battery_power_filtered_x10, 8);
 	
 	// consumed watt-hours
 	ui32_wh_sum_x10 += ui16_battery_power_x10;

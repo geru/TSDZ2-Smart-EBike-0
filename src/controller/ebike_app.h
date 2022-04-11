@@ -12,6 +12,11 @@
 #include <stdint.h>
 #include "main.h"
 
+// startup boost mode
+#define CADENCE						0
+#define SPEED						1
+
+// for check features
 extern volatile uint8_t ui8_lights_state;
 
 // for oem display

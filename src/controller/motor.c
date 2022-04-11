@@ -350,7 +350,7 @@ volatile uint16_t ui16_ebike_check_counter = 0;
 // torque sensor check
 static uint16_t ui16_adc_torque_sensor_check = 0;
 static uint16_t ui16_motor_check_counter = 0;
-#define MOTOR_CHECK_COUNTER_THRESHOLD	10000
+#define MOTOR_CHECK_COUNTER_THRESHOLD	20000 // 1 sec
 
 // system functions
 void read_battery_voltage(void);
