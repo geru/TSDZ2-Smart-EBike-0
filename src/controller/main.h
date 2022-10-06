@@ -257,10 +257,13 @@
 
 // assist pedal level mask
 #define ASSIST_PEDAL_LEVEL0							0x10
+#define ASSIST_PEDAL_LEVEL01						0x80
 #define ASSIST_PEDAL_LEVEL1							0x40
 #define ASSIST_PEDAL_LEVEL2							0x02
 #define ASSIST_PEDAL_LEVEL3							0x04
 #define ASSIST_PEDAL_LEVEL4							0x08
+
+#define ASSIST_PEDAL_LEVEL01_PERCENT				70
 
 // oem display fault & function code
 #define CLEAR_DISPLAY								0
@@ -274,7 +277,7 @@
 #define ERROR_MOTOR_BLOCKED                       	4 // E04
 #define ERROR_MOTOR_CHECK                       	5 // E05 (E03 blinking for XH18)
 #define ERROR_OVERTEMPERATURE						6 // E06
-#define ERROR_BATTERY_OVERCURRENT                 	7 // E07 (E04 blinking for XH18)
+#define ERROR_COMMS				                 	7 // E07 (E04 blinking for XH18)
 #define ERROR_SPEED_SENSOR							8 // E08
 #define ERROR_WRITE_EEPROM  					  	9 // E09 (E08 blinking for XH18)
 
@@ -375,6 +378,9 @@
 #define WALK_ASSIST_ADC_BATTERY_CURRENT_MAX     80
 #define WALK_ASSIST_SPEED_MIN_DETECTABLE		38
 #define WALK_ASSIST_SPEED_NO_DETECTED_COEFF		3
+
+// startup assist
+#define STARTUP_ASSIST_MAX_TIME					100 // 10.0 sec
 
 // cruise threshold (speed limit min km/h x10)
 #define CRUISE_THRESHOLD_SPEED_X10		(uint8_t)(CRUISE_THRESHOLD_SPEED * 10)

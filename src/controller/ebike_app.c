@@ -27,6 +27,7 @@ volatile struct_configuration_variables m_configuration_variables;
 // display menu
 static uint8_t ui8_assist_level = ECO;
 static uint8_t ui8_assist_level_temp = ECO;
+static uint8_t ui8_assist_level_01_flag = 0;
 static uint8_t ui8_walk_assist_flag = 0;
 static uint8_t ui8_riding_mode_temp = 0;
 static uint8_t ui8_lights_flag = 0;
@@ -403,6 +404,7 @@ static uint16_t ui16_startup_boost_factor_array[120];
 
 // startup assist
 static uint8_t ui8_startup_assist = 0;
+static uint8_t ui8_startup_assist_counter = 0;
 static uint8_t ui8_startup_assist_adc_battery_current_target = 0;
 
 // UART
@@ -579,11 +581,11 @@ void ebike_app_controller(void)
 			uart_receive_package();
 			break;
 		case 1:
-			uart_send_package();
-			break;
-		case 2:
 			ebike_control_lights();
 			calc_oem_wheel_speed();
+			break;
+		case 2:
+			uart_send_package();
 			break;
 		case 3:
 			check_battery_soc();
@@ -1822,7 +1824,7 @@ static void check_brakes()
 
 static void check_system()
 {
-	
+// E08 ERROR_SPEED_SENSOR
 #define CHECK_SPEED_SENSOR_COUNTER_THRESHOLD          500 // 500 * 25ms = 12.5 seconds
 #define MOTOR_ERPS_SPEED_THRESHOLD	                  180
 	static uint16_t ui16_check_speed_sensor_counter;
@@ -1863,7 +1865,7 @@ static void check_system()
 	}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
+// E03 ERROR_CADENCE_SENSOR
 #define CHECK_CADENCE_SENSOR_COUNTER_THRESHOLD          1000 // 1000 * 25ms = 25 seconds
 #define CADENCE_SENSOR_RESET_COUNTER_THRESHOLD         	250  // 250 * 25ms = 6,25 seconds
 #define ADC_TORQUE_SENSOR_DELTA_THRESHOLD				(uint16_t)((ADC_TORQUE_SENSOR_RANGE_TARGET >> 1) + 20)
@@ -1898,7 +1900,7 @@ static void check_system()
 	}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
+// E02 ERROR_TORQUE_SENSOR
     // check torque sensor
 	if ((m_configuration_variables.ui8_riding_mode == POWER_ASSIST_MODE)
 	  ||(m_configuration_variables.ui8_riding_mode == TORQUE_ASSIST_MODE)
@@ -1922,7 +1924,7 @@ static void check_system()
 	}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
+// E04 ERROR_MOTOR_BLOCKED
 //#define MOTOR_BLOCKED_COUNTER_THRESHOLD               8  // 8 * 25ms = 0.2 second
 //#define MOTOR_BLOCKED_BATTERY_CURRENT_THRESHOLD_X10   30 // 30 = 3.0 amps
 //#define MOTOR_BLOCKED_ERPS_THRESHOLD                  20 // 20 ERPS
@@ -2184,11 +2186,21 @@ void ebike_control_lights(void)
 // and disable the interrupt. The interrupt should be enable again on main loop, after the package being processed
 void UART2_IRQHandler(void) __interrupt(UART2_IRQHANDLER)
 {
-	if(UART2_GetFlagStatus(UART2_FLAG_RXNE) == SET)
+	// Interrupt is received when Data is received or when overrun occured because UART2_IT_RXNE_OR interrupt is used
+	// test error flags : OverRun, Noise and Framing error flags
+    if ((UART2->SR & (uint8_t)(UART2_FLAG_OR_LHE|UART2_FLAG_NF|UART2_FLAG_FE)) != (uint8_t)0x00)
 	{
-		UART2->SR &= (uint8_t)~(UART2_FLAG_RXNE); // this may be redundant
-
-		ui8_byte_received = UART2_ReceiveData8();
+	    // There is an error
+		// Clear error bits
+		ui8_byte_received = (uint8_t)UART2->DR; // According to datasheet : The Error bits (OR, NF, FE) are reset by a read to the UART_SR register followed by a UART_DR
+		// Trash all received data and wait for next message
+	 	ui8_rx_counter = 0;
+		ui8_state_machine = 0;
+	}
+	else if((UART2->SR & (uint8_t)(UART2_FLAG_RXNE)) != (uint8_t)0x00)
+	{
+		// Read data : Reading data clear UART2_FLAG_RXNE flag
+		ui8_byte_received = (uint8_t)UART2->DR;
 
 		switch(ui8_state_machine)
 		{
@@ -2235,12 +2247,15 @@ static void uart_receive_package(void)
 	uint8_t ui8_rx_check_code;
 	uint8_t ui8_assist_level_mask;
 	
-	// increment the safety counter
+	// increment the comms safety counter
     no_rx_counter++;
 	
 	// increment walk assist counter
 	ui8_walk_assist_counter++;
-		
+	
+	// increment startup assist counter
+	ui8_startup_assist_counter++;
+	
 	// increment cruise counter
 	ui8_cruise_counter++;
 		
@@ -2270,18 +2285,24 @@ static void uart_receive_package(void)
 			ui8_display_ready_flag = 1;
 			
 			// mask assist level from display
-			ui8_assist_level_mask = ui8_rx_buffer[1] & 0x5E; // mask: 01011110
+			//ui8_assist_level_mask = ui8_rx_buffer[1] & 0x5E; // mask: 01011110
+			ui8_assist_level_mask = ui8_rx_buffer[1] & 0xDE; // mask: 11011110
+			ui8_assist_level_01_flag = 0;
 			
 			// set assist level
 			switch(ui8_assist_level_mask)
 			{
 				case ASSIST_PEDAL_LEVEL0: ui8_assist_level = OFF; break;
+				case ASSIST_PEDAL_LEVEL01:
+					ui8_assist_level = ECO;
+					ui8_assist_level_01_flag = 1;
+					break;
 				case ASSIST_PEDAL_LEVEL1: ui8_assist_level = ECO; break;
 				case ASSIST_PEDAL_LEVEL2: ui8_assist_level = TOUR; break;
 				case ASSIST_PEDAL_LEVEL3: ui8_assist_level = SPORT; break;
 				case ASSIST_PEDAL_LEVEL4: ui8_assist_level = TURBO; break;
 			}
-				
+			
 			// display lights button pressed:
 			if(ui8_rx_buffer[1] & 0x01)
 			{
@@ -2760,8 +2781,13 @@ static void uart_receive_package(void)
 					if((ui8_rx_buffer[1] & 0x20)&&(ui8_display_ready_flag)
 						&&(!ui8_walk_assist_flag)&&(ui8_lights_flag))
 						ui8_startup_assist = 1;
+						// startup assist max time
+						if(ui8_startup_assist_counter > STARTUP_ASSIST_MAX_TIME)
+							ui8_startup_assist = 0;
 					else
 						ui8_startup_assist = 0;
+						// restart startup assist counter
+						ui8_startup_assist_counter = 0;
 					#endif
 					
 					// walk assist mode
@@ -2834,6 +2860,8 @@ static void uart_receive_package(void)
 			
 			// set assist parameter
 			ui8_riding_mode_parameter = ui8_riding_mode_parameter_array[m_configuration_variables.ui8_riding_mode - 1][ui8_assist_level];
+			if(ui8_assist_level_01_flag)
+				ui8_riding_mode_parameter = (uint8_t)(((uint16_t) ui8_riding_mode_parameter * ASSIST_PEDAL_LEVEL01_PERCENT) / 100);
 			
 			// automatic data display at lights on
 			if(m_configuration_variables.ui8_auto_display_data_enabled)
@@ -3012,6 +3040,8 @@ static void uart_receive_package(void)
 		// assist level = OFF if connection with the LCD is lost for more than 0,6 sec (safety)
 		if (no_rx_counter > 6)
 			ui8_assist_level = OFF;
+			// E07 (E04 blinking for XH18)
+			ui8_display_fault_code = ERROR_COMMS;
 		
 		// enable UART2 receive interrupt as we are now ready to receive a new package
 		UART2->CR2 |= (1 << 5);
@@ -3064,6 +3094,7 @@ static void uart_send_package(void)
 				break;
 			case 7:
 				ui8_tx_buffer[1] = 0x0C; // Battery 4/4 (full)
+				// E01 (E06 blinking for XH18) ERROR_OVERVOLTAGE
 				ui8_display_fault_code = ERROR_OVERVOLTAGE; // Fault overvoltage
 				break;
 		}
@@ -3102,6 +3133,7 @@ static void uart_send_package(void)
 				break;
 			case 9:
 				ui8_tx_buffer[1] = 0x0C; // Battery 6/6 (full)
+				// E01 (E06 blinking for XH18) ERROR_OVERVOLTAGE
 				ui8_display_fault_code = ERROR_OVERVOLTAGE; // Fault overvoltage
 				break;
 		}
@@ -3122,6 +3154,7 @@ static void uart_send_package(void)
 		#endif
 		
 		// fault temperature limit
+		// E06 ERROR_OVERTEMPERATURE
 		#if ENABLE_TEMPERATURE_ERROR_MIN_LIMIT
 		// temperature error at min limit value
 		if(((uint8_t) (ui16_motor_temperature_filtered_x10 / 10)) >= ui8_motor_temperature_min_value_to_limit)
@@ -3168,6 +3201,12 @@ static void uart_send_package(void)
 				// instead of E05, display blinking E03
 				if(ui8_display_blinking_code)
 					ui8_tx_buffer[5] = 3;
+			}
+			else if (ui8_display_fault_code == ERROR_COMMS)
+			{	
+				// instead of E07, display blinking E04
+				if(ui8_display_blinking_code)
+					ui8_tx_buffer[5] = 4;
 			}
 			else	
 			{
@@ -3262,6 +3301,11 @@ static void uart_send_package(void)
 			// valid value
 			if(ui16_display_data)
 			{
+				#if UNITS_TYPE	// mph and miles
+				uint16_t ui16_data_value = ui16_display_data_factor / ui16_display_data;
+				if(ui16_data_value > 624)
+					ui16_display_data = ui16_display_data * 10;
+				#endif
 				ui8_tx_buffer[6] = (uint8_t) (ui16_display_data & 0xFF);
 				ui8_tx_buffer[7] = (uint8_t) (ui16_display_data >> 8);
 			}

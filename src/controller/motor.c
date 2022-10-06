@@ -605,7 +605,8 @@ void TIM1_CAP_COM_IRQHandler(void) __interrupt(TIM1_CAP_COM_IRQHANDLER)
 			ui8_brake_state = 1;
 		else
 			ui16_ebike_check_counter++;
-	
+		
+		// E05 (E03 blinking for XH18) ERROR_MOTOR_CHECK
 		if(!p_configuration_variables->ui8_assist_with_error_enabled) {
 			// check if the motor goes alone with
 			// torque sensor adc value < torque sensor offset

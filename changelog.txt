@@ -1,6 +1,13 @@
 TSDZ2 Open Source Firmware
 for stock displays XH18 - VLCD5 - VLCD6
 
+List of changes v20.1C.2 alpha 2
+  1 - Added fifth level, for display with 5 levels.
+  2 - Fixed data display with units = miles.
+  3 - Added error E07 display comms problem.
+  4 - Fixed comms error detection (by lcha78).
+  5 - Fixed Startup assist max time (10 sec).
+
 List of changes v20.1C.2 update 1
   1 - Fixed "Startup assist" feature.
   2 - Assist without pedaling, can also be activated with negative torque offset.
